@@ -1,0 +1,806 @@
+¡Perfecto! Vamos a crear el Plan Maestro de Ingeniería para tu editor, integrando TODO lo que hemos analizado. Lo dividiré en partes como solicitaste para que puedas copiarlo fácilmente.
+
+---
+
+📋 PLAN MAESTRO DE INGENIERÍA - PARTE 1/5
+
+FUNDACIÓN Y ARQUITECTURA BASE
+
+1. VISIÓN GENERAL DEL PROYECTO
+
+1.1 Objetivo Principal
+
+Crear un editor visual de juegos para Android (con una sola escena activa) usando Rust + wgpu (Modo Bestia) + raylib (Modo Dinámico) + egui, con scripting basado en TOML/JSON, que funcione fluidamente en dispositivos desde 2GB RAM hasta gama alta.
+
+1.2 Filosofía Central
+
+· Una escena activa siempre: Cerrar, guardar, abrir (nunca múltiples escenas en memoria)
+· Datos, no código: TOML/JSON como lenguaje de scripting (seguro, portable, IA-amigable)
+· Doble backend: wgpu para máximo rendimiento, raylib para máxima compatibilidad
+· Educación proactiva: Panel de métricas que enseña a optimizar
+· Modo juego instantáneo: Toggle con mismo backend (sin recarga)
+
+1.3 Stack Tecnológico Definitivo
+
+Capa Tecnología Versión Propósito
+Lenguaje Rust 1.75+ Base del sistema, sin GC, rendimiento nativo
+Renderizado Bestia wgpu 0.19+ Vulkan/Metal/Direct3D/WebGPU
+Renderizado Dinámico raylib 4.5+ (raylib-rs) OpenGL ES 3.0/2.0, compatibilidad máxima
+UI egui 0.26+ Paneles inmediatos tipo Discord
+Serialización Serde + TOML/JSON 1.0+ Scripting basado en datos
+Matemáticas glam 0.25+ Vectores, matrices, transforms
+Logging log + android_logger - Depuración en dispositivo
+Assets image, ron, etc - Carga de texturas, mallas
+
+---
+
+2. ARQUITECTURA DE BACKEND DOBLE (wgpu + raylib)
+
+2.1 Trait Común para Ambos Renderizadores
+
+```rust
+// core/render_backend.rs
+pub trait RenderBackend: Send + Sync {
+    // Inicialización
+    fn new() -> Result<Self, RenderError> where Self: Sized;
+    
+    // Ciclo de renderizado
+    fn begin_frame(&mut self);
+    fn render_scene(&mut self, scene: &Scene);
+    fn end_frame(&mut self);
+    
+    // Gestión de recursos
+    fn load_mesh(&mut self, mesh_data: &MeshData) -> Result<MeshHandle, RenderError>;
+    fn load_texture(&mut self, texture_data: &TextureData) -> Result<TextureHandle, RenderError>;
+    fn unload_mesh(&mut self, handle: MeshHandle);
+    fn unload_texture(&mut self, handle: TextureHandle);
+    
+    // Cámara
+    fn set_camera(&mut self, camera: &Camera);
+    fn get_camera(&self) -> Camera;
+    
+    // Métricas (para el panel)
+    fn get_metrics(&self) -> PerformanceMetrics;
+    
+    // Validación
+    fn validate_frame(&self) -> bool;
+    fn get_backend_type(&self) -> BackendType;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BackendType {
+    Wgpu,   // Modo Bestia
+    Raylib, // Modo Dinámico
+}
+
+#[derive(Debug, Clone)]
+pub struct PerformanceMetrics {
+    pub ram_mb: f32,
+    pub cpu_percent: f32,
+    pub gpu_percent: f32,
+    pub fps: u32,
+    pub draw_calls: u32,
+    pub polygons: u32,
+    pub frame_time_ms: f32,
+}
+```
+
+2.2 Implementación Wgpu (Modo Bestia)
+
+```rust
+// render/wgpu_backend.rs
+pub struct WgpuBackend {
+    instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    surface: wgpu::Surface,
+    surface_config: wgpu::SurfaceConfiguration,
+    render_pipeline: RenderPipeline,
+    
+    // Recursos
+    meshes: HashMap<MeshHandle, WgpuMesh>,
+    textures: HashMap<TextureHandle, WgpuTexture>,
+    
+    // Estado
+    camera: Camera,
+    metrics: PerformanceMetrics,
+    last_frame_valid: bool,
+    fallback_texture: Option<wgpu::Texture>,
+}
+
+impl RenderBackend for WgpuBackend {
+    fn new() -> Result<Self, RenderError> {
+        // Inicialización con detección de capacidades
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::DX12,
+            ..Default::default()
+        });
+        
+        // Intentar crear superficie, etc.
+        // Si falla, retornar error para activar fallback
+    }
+    
+    fn render_scene(&mut self, scene: &Scene) {
+        // Renderizado con instancing, compute shaders, etc.
+        // Si algo falla, usar fallback texture
+    }
+}
+
+// shaders/wgsl/ (todos los shaders para modo Bestia)
+// - basic.wgsl (shader mínimo)
+// - pbr.wgsl (físicamente basado)
+// - instancing.wgsl (para objetos repetidos)
+// - compute_particles.wgsl (partículas GPU)
+```
+
+2.3 Implementación Raylib (Modo Dinámico)
+
+```rust
+// render/raylib_backend.rs
+pub struct RaylibBackend {
+    rl: RaylibHandle,
+    thread: RaylibThread,
+    
+    // Recursos
+    meshes: HashMap<MeshHandle, RaylibMesh>,
+    textures: HashMap<TextureHandle, RaylibTexture2D>,
+    
+    // Estado
+    camera: Camera,
+    metrics: PerformanceMetrics,
+}
+
+impl RenderBackend for RaylibBackend {
+    fn new() -> Result<Self, RenderError> {
+        // Raylib siempre funciona (fallback final)
+        let (mut rl, thread) = raylib::init()
+            .size(800, 600)
+            .title("Editor - Modo Dinámico")
+            .resizable()
+            .vsync()
+            .build();
+        
+        Ok(RaylibBackend {
+            rl,
+            thread,
+            meshes: HashMap::new(),
+            textures: HashMap::new(),
+            camera: Camera::default(),
+            metrics: PerformanceMetrics::default(),
+        })
+    }
+    
+    fn render_scene(&mut self, scene: &Scene) {
+        let mut d = self.rl.begin_drawing(&self.thread);
+        d.clear_background(Color::DARKGRAY);
+        
+        // Renderizado clásico con raylib
+        // Draw calls limitadas pero compatibilidad máxima
+    }
+}
+
+// shaders/glsl/ (shaders compatibles con OpenGL ES 2.0/3.0)
+// - basic.vs / basic.fs (shader mínimo)
+// - textured.vs / textured.fs (con texturas)
+```
+
+---
+
+3. SISTEMA DE UNA ESCENA ACTIVA
+
+3.1 Scene Manager
+
+```rust
+// core/scene_manager.rs
+pub struct SceneManager {
+    current_scene: Option<Scene>,
+    scene_path: Option<PathBuf>,
+    modified: bool,
+    undo_stack: Vec<SceneSnapshot>,
+    redo_stack: Vec<SceneSnapshot>,
+}
+
+pub struct Scene {
+    pub id: Uuid,
+    pub name: String,
+    pub metadata: SceneMetadata,
+    pub nodes: Vec<Node>,
+    pub animations: Vec<Animation>,
+    pub physics: PhysicsSettings,
+    pub camera: Camera,
+    pub assets: SceneAssets,
+}
+
+pub struct SceneSnapshot {
+    scene: Scene,
+    timestamp: std::time::Instant,
+    description: String,
+}
+
+impl SceneManager {
+    pub fn new() -> Self {
+        SceneManager {
+            current_scene: None,
+            scene_path: None,
+            modified: false,
+            undo_stack: Vec::with_capacity(50), // Máximo 50 deshacer
+            redo_stack: Vec::new(),
+        }
+    }
+    
+    pub fn open_scene(&mut self, path: PathBuf) -> Result<(), SceneError> {
+        // 1. Preguntar guardar si hay modificaciones
+        if self.modified {
+            self.prompt_save()?;
+        }
+        
+        // 2. Liberar escena anterior (¡CRÍTICO!)
+        if let Some(old_scene) = self.current_scene.take() {
+            self.unload_scene_assets(old_scene);
+        }
+        
+        // 3. Cargar nueva escena desde TOML
+        let content = std::fs::read_to_string(&path)?;
+        let scene: Scene = toml::from_str(&content)?;
+        
+        // 4. Validar recursos
+        self.validate_scene_assets(&scene)?;
+        
+        // 5. Asignar como activa
+        self.current_scene = Some(scene);
+        self.scene_path = Some(path);
+        self.modified = false;
+        
+        // 6. Resetear stacks de undo/redo
+        self.undo_stack.clear();
+        self.redo_stack.clear();
+        
+        Ok(())
+    }
+    
+    pub fn close_scene(&mut self) {
+        // Liberar TODO explícitamente
+        if let Some(scene) = self.current_scene.take() {
+            self.unload_scene_assets(scene);
+        }
+        
+        self.scene_path = None;
+        self.modified = false;
+        self.undo_stack.clear();
+        self.redo_stack.clear();
+    }
+    
+    fn unload_scene_assets(&self, scene: Scene) {
+        // Notificar al renderizador que libere recursos
+        // Importante: Rust drop libera memoria, pero necesitamos
+        // liberar recursos gráficos explícitamente
+        for mesh in scene.assets.meshes {
+            renderer.unload_mesh(mesh.handle);
+        }
+        for texture in scene.assets.textures {
+            renderer.unload_texture(texture.handle);
+        }
+    }
+}
+```
+
+3.2 Formato TOML para Escenas
+
+```toml
+# ejemplo_escena.toml
+[metadata]
+name = "Nivel Bosque"
+author = "Dev"
+version = "1.0"
+created = "2024-01-20"
+last_modified = "2024-01-21"
+description = "Primer nivel del juego"
+
+[settings]
+viewport_mode = "3D"
+grid_enabled = true
+snap_to_grid = 0.5
+
+[camera]
+position = [5.0, 2.0, 10.0]
+target = [0.0, 1.0, 0.0]
+up = [0.0, 1.0, 0.0]
+fov = 60.0
+near = 0.1
+far = 100.0
+
+[assets]
+meshes = [
+    { id = "player", path = "assets/player.glb", scale = 1.0, lod_levels = 3 },
+    { id = "tree", path = "assets/tree.glb", scale = 1.0 },
+    { id = "ground", path = "assets/plane.glb", scale = 10.0 }
+]
+
+textures = [
+    { id = "player_skin", path = "assets/player.png", compression = "ETC2" },
+    { id = "tree_bark", path = "assets/bark.jpg", compression = "ETC2" }
+]
+
+# Nodos de la escena
+[[nodes]]
+type = "Character"
+name = "Hero"
+mesh = "player"
+position = [0.0, 0.0, 0.0]
+rotation = [0.0, 0.0, 0.0, 1.0]
+scale = [1.0, 1.0, 1.0]
+tags = ["player", "controllable"]
+
+[[nodes.children]]
+type = "Mesh"
+name = "Sword"
+mesh = "assets/sword.glb"
+position = [0.5, 1.0, 0.0]
+parent_bone = "hand_right"
+
+# Comportamientos (scripting TOML)
+[[nodes.behaviors]]
+type = "Oscillate"
+axis = "y"
+speed = 2.0
+amplitude = 0.5
+
+[[nodes.behaviors]]
+type = "Rotate"
+speed = [0.0, 1.0, 0.0]
+
+# Animaciones
+[[animations]]
+name = "walk"
+fps = 30
+length = 1.5
+loop = true
+
+[[animations.tracks]]
+node = "Hero"
+property = "position"
+times = [0.0, 0.5, 1.0, 1.5]
+values = [
+    [0.0, 0.0, 0.0],
+    [1.0, 0.0, 0.0],
+    [2.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0]
+]
+interpolation = "linear"
+
+[physics]
+gravity = [0.0, -9.8, 0.0]
+physics_rate = 60
+
+[[physics.colliders]]
+node = "Hero"
+type = "capsule"
+radius = 0.5
+height = 2.0
+center = [0.0, 1.0, 0.0]
+```
+
+---
+
+4. ARQUITECTURA DE COMPILACIÓN PARA ANDROID
+
+4.1 Targets de Compilación Soportados
+
+Arquitectura Target Rust Dispositivos Incluir
+arm64-v8a aarch64-linux-android 95% dispositivos modernos (2015+) ✅ Sí
+armeabi-v7a armv7-linux-androideabi Dispositivos 2GB RAM, Redmi Note 8 ✅ Sí (¡CRÍTICO!)
+x86_64 x86_64-linux-android Emuladores, tablets antiguas ⚠️ Opcional
+x86 i686-linux-android Emuladores muy antiguos ❌ No
+
+4.2 Estructura de Build con Cargo
+
+```toml
+# Cargo.toml (raíz del proyecto)
+[package]
+name = "rust_editor"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+# Core
+wgpu = "0.19"
+raylib = { version = "4.5", features = ["android"] }
+egui = "0.26"
+egui-wgpu = "0.26"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+glam = "0.25"
+log = "0.4"
+
+# Android específico
+android_logger = "0.13"
+android-activity = "0.5"
+
+[target.'cfg(target_os = "android")'.dependencies]
+ndk = "0.8"
+ndk-context = "0.1"
+ndk-glue = "0.8"
+
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
+strip = true  # Reducir tamaño APK
+
+[profile.dev]
+opt-level = 0
+debug = true
+```
+
+4.3 Script de Build para Android (build_android.sh)
+
+```bash
+#!/bin/bash
+# build_android.sh - Script completo para compilar a múltiples arquitecturas
+
+set -e  # Salir si hay error
+
+# Configuración
+KEYSTORE_PATH="release.keystore"
+KEY_ALIAS="editor"
+VERSION_NAME=$(grep '^version =' Cargo.toml | cut -d '"' -f2)
+BUILD_DIR="target/android-build"
+
+# Colores para output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}=== Compilando Rust Editor para Android v${VERSION_NAME} ===${NC}"
+
+# Crear directorio de build
+mkdir -p $BUILD_DIR
+
+# Función para compilar una arquitectura
+compile_arch() {
+    local arch=$1
+    local target=$2
+    
+    echo -e "${YELLOW}Compilando para $arch ($target)...${NC}"
+    
+    # Añadir target si no existe
+    rustup target add $target
+    
+    # Compilar en release
+    cargo build --release --target $target
+    
+    # Copiar librería
+    local lib_path="target/$target/release/librust_editor.so"
+    local out_path="$BUILD_DIR/lib-$arch.so"
+    
+    if [ -f "$lib_path" ]; then
+        cp "$lib_path" "$out_path"
+        echo -e "${GREEN}✓ $arch compilado correctamente${NC}"
+    else
+        echo -e "${RED}✗ Error compilando $arch${NC}"
+        exit 1
+    fi
+}
+
+# Compilar arquitecturas soportadas
+compile_arch "arm64-v8a" "aarch64-linux-android"
+compile_arch "armeabi-v7a" "armv7-linux-androideabi"
+# Opcional: descomentar si se necesita
+# compile_arch "x86_64" "x86_64-linux-android"
+
+echo -e "${GREEN}=== Creando APK ===${NC}"
+
+# Crear estructura de APK
+APK_DIR="$BUILD_DIR/apk"
+mkdir -p $APK_DIR/lib/arm64-v8a
+mkdir -p $APK_DIR/lib/armeabi-v7a
+
+# Copiar librerías
+cp $BUILD_DIR/lib-arm64-v8a.so $APK_DIR/lib/arm64-v8a/librust_editor.so
+cp $BUILD_DIR/lib-armeabi-v7a.so $APK_DIR/lib/armeabi-v7a/librust_editor.so
+
+# Crear AndroidManifest.xml
+cat > $APK_DIR/AndroidManifest.xml << EOF
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.tueditor.app"
+    android:versionCode="1"
+    android:versionName="$VERSION_NAME">
+
+    <!-- Permisos necesarios -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    
+    <!-- OpenGL ES 2.0+ para raylib -->
+    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
+    
+    <!-- Vulkan opcional para wgpu -->
+    <uses-feature android:name="android.hardware.vulkan.level" android:required="false" />
+    
+    <!-- Soporte de texturas comprimidas -->
+    <supports-gl-texture android:name="GL_EXT_texture_compression_etc2" />
+    
+    <application
+        android:allowBackup="true"
+        android:label="Rust Editor"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:hasCode="false"
+        android:extractNativeLibs="true">
+        
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="Rust Editor"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="true">
+            
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="rust_editor" />
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+EOF
+
+# Crear APK sin firmar
+echo -e "${YELLOW}Empaquetando APK sin firmar...${NC}"
+cd $APK_DIR
+zip -r ../editor-unsigned.zip * > /dev/null
+cd ../..
+
+# Zipalign (optimizar)
+echo -e "${YELLOW}Optimizando con zipalign...${NC}"
+zipalign -f -p 4 $BUILD_DIR/editor-unsigned.zip $BUILD_DIR/editor-aligned.apk
+
+# Firmar APK
+echo -e "${YELLOW}Firmando APK con apksigner...${NC}"
+apksigner sign \
+    --ks $KEYSTORE_PATH \
+    --ks-key-alias $KEY_ALIAS \
+    --v1-signing-enabled true \
+    --v2-signing-enabled true \
+    --v3-signing-enabled true \
+    --out $BUILD_DIR/rust-editor-v$VERSION_NAME.apk \
+    $BUILD_DIR/editor-aligned.apk
+
+# Verificar firma
+echo -e "${YELLOW}Verificando firma...${NC}"
+apksigner verify --verbose $BUILD_DIR/rust-editor-v$VERSION_NAME.apk
+
+# Limpiar archivos temporales
+rm $BUILD_DIR/editor-unsigned.zip $BUILD_DIR/editor-aligned.apk
+
+echo -e "${GREEN}=== ¡COMPLETADO! ===${NC}"
+echo -e "APK generado: ${YELLOW}$BUILD_DIR/rust-editor-v$VERSION_NAME.apk${NC}"
+ls -lh $BUILD_DIR/rust-editor-v$VERSION_NAME.apk
+```
+
+4.4 Configuración de AndroidManifest.xml Completa
+
+```xml
+<!-- AndroidManifest.xml completo con todas las configuraciones -->
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.tueditor.app"
+    android:versionCode="1"
+    android:versionName="0.1.0">
+
+    <!-- MÍNIMO: Android 5.0 (API 21) para dispositivos 2GB RAM -->
+    <uses-sdk 
+        android:minSdkVersion="21" 
+        android:targetSdkVersion="33"
+        android:maxSdkVersion="35" />
+    
+    <!-- Permisos -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- OpenGL ES 2.0+ (para raylib) -->
+    <uses-feature 
+        android:glEsVersion="0x00020000" 
+        android:required="true" />
+    
+    <!-- Vulkan (opcional, para wgpu) -->
+    <uses-feature 
+        android:name="android.hardware.vulkan.level" 
+        android:required="false" />
+    
+    <!-- Soporte de texturas comprimidas -->
+    <supports-gl-texture android:name="GL_EXT_texture_compression_etc2" />
+    <supports-gl-texture android:name="GL_KHR_texture_compression_astc_ldr" />
+    
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme"
+        android:hasCode="false"
+        android:extractNativeLibs="true"
+        android:largeHeap="true"
+        android:usesCleartextTraffic="true">
+        
+        <!-- Actividad principal -->
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="@string/app_name"
+            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|smallestScreenSize"
+            android:screenOrientation="userLandscape"
+            android:exported="true">
+            
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="rust_editor" />
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <!-- Proveedor de archivos para compartir escenas -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>
+```
+
+---
+
+5. SISTEMA DE PRUEBAS Y VALIDACIÓN
+
+5.1 Tests de Arquitectura en Entornos Virtuales
+
+```rust
+// tests/architecture_tests.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    // Test de compilación cruzada
+    #[test]
+    fn test_cross_compilation() {
+        // Verificar que los targets están instalados
+        let targets = [
+            "aarch64-linux-android",
+            "armv7-linux-androideabi",
+        ];
+        
+        for target in targets {
+            let output = std::process::Command::new("rustup")
+                .args(&["target", "list", "--installed"])
+                .output()
+                .unwrap();
+            
+            let installed = String::from_utf8(output.stdout).unwrap();
+            assert!(installed.contains(target), 
+                "Target {} no instalado", target);
+        }
+    }
+    
+    // Test de bindings de librerías
+    #[test]
+    fn test_library_bindings() {
+        // Verificar que wgpu se puede inicializar
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::VULKAN,
+            ..Default::default()
+        });
+        assert!(instance.enabled_backends().contains(wgpu::Backends::VULKAN));
+        
+        // Verificar que raylib se puede inicializar
+        let (rl, thread) = raylib::init()
+            .width(1)
+            .height(1)
+            .title("test")
+            .build();
+        assert!(rl.is_ready());
+    }
+}
+```
+
+5.2 Tests de Compatibilidad en Dispositivos Virtuales
+
+```bash
+#!/bin/bash
+# test_on_emulator.sh - Probar en emuladores Android
+
+# Crear AVD para diferentes configuraciones
+echo "Creando emulador para ARM64 (Android 10)..."
+avdmanager create avd -n test_arm64 -k "system-images;android-29;google_apis;arm64-v8a"
+
+echo "Creando emulador para ARMv7 (Android 5.1)..."
+avdmanager create avd -n test_armv7 -k "system-images;android-22;google_apis;armeabi-v7a"
+
+# Probar en cada emulador
+for emulator in test_arm64 test_armv7; do
+    echo "=== Probando en $emulator ==="
+    
+    # Iniciar emulador en background
+    emulator -avd $emulator -no-window -no-audio &
+    EMU_PID=$!
+    
+    # Esperar a que inicie
+    sleep 30
+    
+    # Instalar APK
+    adb install target/android-build/rust-editor*.apk
+    
+    # Ejecutar tests automatizados
+    adb shell am start -n com.tueditor.app/.TestActivity
+    
+    # Capturar logs
+    adb logcat -d > "logs_$emulator.txt"
+    
+    # Cerrar emulador
+    kill $EMU_PID
+done
+```
+
+5.3 Tests de Librerías Necesarias
+
+```rust
+// tests/library_deps_test.rs
+#[test]
+fn test_all_dependencies_available() {
+    // Lista de dependencias críticas
+    let crates = vec![
+        "wgpu",
+        "raylib",
+        "egui",
+        "serde",
+        "toml",
+        "glam",
+        "android_logger",
+    ];
+    
+    for crate_name in crates {
+        // Verificar que el crate está disponible
+        let output = std::process::Command::new("cargo")
+            .args(&["tree", "-i", crate_name])
+            .output()
+            .unwrap();
+        
+        assert!(output.status.success(), 
+            "Dependencia {} no encontrada", crate_name);
+    }
+}
+```
+
+---
+
+📋 RESUMEN PARTE 1/5
+
+Hemos establecido:
+
+1. Visión y objetivos claros del proyecto
+2. Stack tecnológico definitivo con Rust + wgpu + raylib + egui
+3. Arquitectura de doble backend con trait común
+4. Sistema de una escena activa con gestión de memoria
+5. Formato TOML para datos universales
+6. Estrategia de compilación para ARM64 y ARMv7
+7. Tests automatizados para validar arquitectura y dependencias
+
+¿Confirmas recibido para continuar con la PARTE 2/5? En la siguiente parte cubriremos:
+
+· Implementación completa del sistema de UI con egui (paneles tipo Discord)
+· El viewport central no cerrable con botón TV
+· Sistema de animación en viewport con handles 3D
+· Panel de métricas bajo el inspector
+· Integración de ambos backends con toggle en caliente

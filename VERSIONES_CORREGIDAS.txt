@@ -1,0 +1,205 @@
+================================================================================
+              RUST EDITOR - VERSIONES DE DEPENDENCIAS CORREGIDAS
+================================================================================
+
+Fecha: 2024
+Proyecto: rust_editor v0.1.0
+
+================================================================================
+1. VERSIONES MODIFICADAS (CAMBIOS REALIZADOS)
+================================================================================
+
+┌──────────────┬──────────────────┬──────────────────┬────────────────────────┐
+│ Dependencia  │ Versión Original │ Versión Final    │ Razón del Cambio       │
+├──────────────┼──────────────────┼──────────────────┼────────────────────────┤
+│ raylib       │ 4.5              │ 5.0              │ 4.5 no existe          │
+│ raylib feat  │ ["no_glfw"]      │ (sin features)   │ Feature no existe      │
+│ ndk          │ 0.8              │ 0.7              │ 0.8 no existe          │
+│ ndk-glue     │ 0.8              │ 0.7              │ 0.8 no existe          │
+└──────────────┴──────────────────┴──────────────────┴────────────────────────┘
+
+================================================================================
+2. RAYLIB - VERSIONES DISPONIBLES
+================================================================================
+
+Versiones que existen en crates.io:
+
+  ✅ 5.5.1  (más reciente)
+  ✅ 5.5.0
+  ✅ 5.0.2
+  ✅ 5.0.1
+  ✅ 5.0.0  ← USAMOS ESTA
+
+  ❌ 4.5    (NO EXISTE - por eso el error)
+  ❌ 4.0    (NO EXISTE)
+  ❌ 3.7    (NO EXISTE)
+
+Features disponibles para raylib 5.x:
+
+  • Sin features especiales (lo que usamos)
+  • El feature "no_glfw" NO existe en la versión 5.x
+
+Línea final en Cargo.toml:
+
+  raylib = { version = "5.0", optional = true }
+
+================================================================================
+3. NDK - VERSIONES DISPONIBLES
+================================================================================
+
+ndk (Android NDK bindings):
+
+  ✅ 0.9.0  (más reciente)
+  ✅ 0.8.0  (existe pero no probada)
+  ✅ 0.7.0  ← USAMOS ESTA
+  ✅ 0.6.2
+  ✅ 0.6.1
+
+  ❌ 0.8    (como "0.8" exacto NO existe, hay que usar "0.8.0")
+
+ndk-glue (Android NDK glue):
+
+  ✅ 0.7.0  ← USAMOS ESTA
+  ✅ 0.6.2
+  ✅ 0.6.1
+  ✅ 0.6.0
+
+  ❌ 0.8    (NO EXISTE)
+
+Líneas finales en Cargo.toml:
+
+  [target.'cfg(target_os = "android")'.dependencies]
+  ndk = "0.7"
+  ndk-context = "0.1"
+  ndk-glue = "0.7"
+  android-activity = "0.5"
+
+================================================================================
+4. TODAS LAS DEPENDENCIAS - VERSIONES FINALES
+================================================================================
+
+# UI
+egui = "0.26"                    # ✓ 0.26.2
+eframe = "0.26"                  # ✓ 0.26.2
+egui_extras = "0.26"             # ✓ 0.26.2
+
+# Renderizado
+raylib = "5.0"                   # ✓ 5.0.x
+wgpu = "0.19"                    # ✓ 0.19.4
+egui-wgpu = "0.26"               # ✓ 0.26.2
+
+# Matemáticas
+glam = "0.25"                    # ✓ 0.25.0
+
+# Serialización
+serde = "1.0"                    # ✓ 1.0.x
+serde_json = "1.0"               # ✓ 1.0.x
+toml = "0.8"                     # ✓ 0.8.x
+ron = "0.8"                      # ✓ 0.8.1
+
+# Logging
+log = "0.4"                      # ✓ 0.4.x
+env_logger = "0.10"              # ✓ 0.10.2
+android_logger = "0.13"          # ✓ 0.13.3
+
+# Errores
+anyhow = "1.0"                   # ✓ 1.0.x
+thiserror = "1.0"                # ✓ 1.0.69
+
+# Utilidades
+uuid = "1.6"                     # ✓ 1.6.x
+once_cell = "1.19"               # ✓ 1.19.x
+parking_lot = "0.12"             # ✓ 0.12.x
+image = "0.24"                   # ✓ 0.24.9
+
+# Android
+ndk = "0.7"                      # ✓ 0.7.0
+ndk-context = "0.1"              # ✓ 0.1.1
+ndk-glue = "0.7"                 # ✓ 0.7.0
+android-activity = "0.5"         # ✓ 0.5.2
+
+# Desktop (desarrollo)
+pollster = "0.3"                 # ✓ 0.3.0
+
+# Dev (tests)
+criterion = "0.5"                # ✓ 0.5.1
+mockall = "0.12"                 # ✓ 0.12.1
+
+================================================================================
+5. CAMBIOS ADICIONALES EN CARGO.TOML
+================================================================================
+
+# Se comentó el benchmark (no existe el archivo):
+# [[bench]]
+# name = "render_benchmark"
+# harness = false
+
+================================================================================
+6. COMANDOS PARA VERIFICAR DEPENDENCIAS
+================================================================================
+
+# Ver todas las dependencias y versiones
+cargo tree
+
+# Ver información de una dependencia específica
+cargo search raylib
+cargo search ndk
+cargo search ndk-glue
+
+# Verificar que todas las versiones son válidas
+cargo fetch
+
+# Limpiar y descargar de nuevo
+cargo clean
+cargo fetch
+
+================================================================================
+7. NOTAS IMPORTANTES
+================================================================================
+
+1. RAYLIB:
+   - Usar versión 5.x (la 4.x no existe en crates.io)
+   - No usar features que no existen como "no_glfw"
+   - En Termux puede requerir: pkg install raylib
+
+2. NDK-GLUE:
+   - La versión 0.7 es estable y funciona
+   - La 0.8 no existe (error común)
+   - Si hay errores, probar con 0.6.2
+
+3. WGPU:
+   - Versión 0.19 es compatible con egui 0.26
+   - Requiere Vulkan/Metal en el dispositivo
+
+4. EGUI/EFRAME:
+   - Mantener versiones sincronizadas (0.26.x)
+   - Si actualizas una, actualiza la otra
+
+================================================================================
+8. SOLUCIÓN DE ERRORES COMUNES
+================================================================================
+
+ERROR: "failed to select a version for `raylib`"
+SOLUCIÓN: Usar raylib = "5.0" (no "4.5")
+
+ERROR: "feature `no_glfw` does not exist"
+SOLUCIÓN: Quitar features de raylib
+
+ERROR: "failed to select a version for `ndk-glue`"
+SOLUCIÓN: Usar ndk-glue = "0.7" (no "0.8")
+
+ERROR: "failed to select a version for `ndk`"
+SOLUCIÓN: Usar ndk = "0.7" (no "0.8")
+
+================================================================================
+                              FIN DEL DOCUMENTO
+================================================================================
+
+Guardar este archivo junto al backup:
+  /data/data/com.termux/files/home/VERSIONES_CORREGIDAS.txt
+
+Backup del proyecto:
+  /data/data/com.termux/files/home/rust_editor_backup.zip
+
+Guía de compilación:
+  /data/data/com.termux/files/home/DEPENDENCIAS_Y_PASOS_BUILD.txt

@@ -1,0 +1,243 @@
+================================================================================
+              GITHUB ACTIONS - GUÍA DE COMPILACIÓN EN LA NUBE
+================================================================================
+
+¿Qué es GitHub Actions?
+-----------------------
+Servicio gratuito de GitHub que permite compilar tu código automáticamente
+en servidores potentes (sin usar tu celular/PC).
+
+Límites gratuitos:
+  • 2000 minutos/mes (suficiente para ~20-40 builds)
+  • 500 MB de almacenamiento de artifacts
+  • 6 horas máximo por workflow
+
+
+================================================================================
+1. ARCHIVOS CREADOS
+================================================================================
+
+📄 .github/workflows/build_android.yml
+   → Workflow principal que compila el APK automáticamente
+
+
+================================================================================
+2. CONFIGURACIÓN EN GITHUB
+================================================================================
+
+PASO 1: Subir código a GitHub
+-----------------------------
+  # Inicializar repositorio
+  cd rust_editor
+  git init
+  git add .
+  git commit -m "Initial commit: Rust Editor v0.1.0"
+  
+  # Crear repositorio en GitHub (web)
+  # Luego conectar:
+  git remote add origin https://github.com/TU_USUARIO/rust_editor.git
+  git branch -M main
+  git push -u origin main
+
+
+PASO 2: Habilitar GitHub Actions
+--------------------------------
+  1. Ve a tu repositorio en GitHub
+  2. Click en "Settings"
+  3. Click en "Actions" (menú izquierdo)
+  4. Click en "General"
+  5. En "Actions permissions" selecciona: "Allow all actions"
+  6. Click "Save"
+
+
+PASO 3: Ejecutar el build
+-------------------------
+Opción A: Automático (cada push)
+  • Cada vez que hagas push a main/master, se ejecutará automáticamente
+
+Opción B: Manual
+  1. Ve a "Actions" en tu repositorio
+  2. Click en "Build Android APK"
+  3. Click en "Run workflow"
+  4. Espera ~15-25 minutos
+
+
+================================================================================
+3. RESULTADOS DEL BUILD
+================================================================================
+
+Cuando el build termine:
+
+✅ APK generado:
+   → Ve a "Actions" > click en el build > "Artifacts"
+   → Descarga: rust-editor-0.1.0-debug.zip
+   → Descomprime y tendrás: rust-editor-debug.apk
+
+✅ Librerías nativas:
+   → native-libs-0.1.0.zip (si las necesitas por separado)
+
+✅ Release automático (en main):
+   → Ve a "Releases" en tu repositorio
+   → El APK estará disponible para descarga directa
+
+
+================================================================================
+4. INSTALAR EL APK
+================================================================================
+
+  # Conectar dispositivo
+  adb devices
+  
+  # Instalar
+  adb install rust-editor-debug.apk
+  
+  # O transferir al celular e instalar manualmente
+  # (permitir "orígenes desconocidos" en Android)
+
+
+================================================================================
+5. PERSONALIZACIÓN DEL WORKFLOW
+================================================================================
+
+Cambiar versión de Rust:
+  env:
+    RUST_VERSION: 1.75.0  # ← Cambiar aquí
+
+Cambiar versión del APK:
+  env:
+    APK_VERSION: 0.1.0  # ← Cambiar aquí
+
+Agregar más arquitecturas:
+  targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+Habilitar build desktop:
+  En el job "build-desktop", cambiar: if: false → if: true
+
+
+================================================================================
+6. FIRMAR CON TU PROPIO KEYSTORE (PRODUCCIÓN)
+================================================================================
+
+Para releases oficiales (no debug):
+
+  1. Generar keystore:
+     keytool -genkey -v -keystore mi-keystore.keystore \
+       -alias mi_alias -keyalg RSA -keysize 2048 -validity 10000
+
+  2. Guardar en GitHub Secrets:
+     - Settings > Secrets and variables > Actions
+     - Nuevo secret: KEYSTORE_BASE64 (contenido del .keystore en base64)
+     - Nuevo secret: KEYSTORE_PASSWORD (tu contraseña)
+     - Nuevo secret: KEY_ALIAS (tu alias)
+
+  3. Modificar el workflow para usar los secrets
+
+
+================================================================================
+7. COMANDOS ÚTILES
+================================================================================
+
+Ver logs del build en tiempo real:
+  → Actions > click en el build > ver logs
+
+Descargar artifacts:
+  → Actions > click en el build > "Artifacts" section
+
+Cancelar un build:
+  → Actions > click en el build > "Cancel workflow"
+
+Re-ejecutar un build fallido:
+  → Actions > click en el build > "Re-run jobs"
+
+
+================================================================================
+8. SOLUCIÓN DE PROBLEMAS
+================================================================================
+
+ERROR: "Workflow no aparece"
+SOLUCIÓN: Asegúrate de que el archivo está en .github/workflows/
+
+ERROR: "Build falla en 'cargo fetch'"
+SOLUCIÓN: Verifica que Cargo.toml tenga versiones válidas
+
+ERROR: "Timeout después de 6 horas"
+SOLUCIÓN: El build no debería tomar tanto. Revisa los logs.
+
+ERROR: "No space left on device"
+SOLUCIÓN: Agrega paso para limpiar: cargo clean antes de build
+
+
+================================================================================
+9. TIEMPOS ESTIMADOS
+================================================================================
+
+┌──────────────────────────────┬─────────────────┐
+│ Etapa                        │ Tiempo estimado │
+├──────────────────────────────┼─────────────────┤
+│ Checkout del código          │ 30 segundos     │
+│ Instalar Rust                │ 1 minuto        │
+│ Descargar dependencias       │ 3-8 minutos     │
+│ Instalar Android SDK/NDK     │ 2-4 minutos     │
+│ Build ARM64                  │ 5-10 minutos    │
+│ Build ARMv7                  │ 5-10 minutos    │
+│ Empaquetar APK               │ 1 minuto        │
+│ Firmar APK                   │ 30 segundos     │
+├──────────────────────────────┼─────────────────┤
+│ TOTAL                        │ 15-25 minutos   │
+└──────────────────────────────┴─────────────────┘
+
+
+================================================================================
+10. FLUJO RECOMENDADO
+================================================================================
+
+1. Desarrollo local:
+   git add . && git commit -m "cambios"
+
+2. Push a GitHub:
+   git push origin main
+
+3. Esperar notificación de GitHub (email)
+
+4. Descargar APK de Actions/Releases
+
+5. Instalar en dispositivo y probar
+
+6. Repetir desde paso 1
+
+
+================================================================================
+11. ALTERNATIVAS A GITHUB ACTIONS
+================================================================================
+
+Si necesitas más minutos o builds más rápidos:
+
+1. Cirrus CI (gratis para open source)
+2. Azure Pipelines (gratis 1800 min/mes)
+3. GitLab CI (gratis 400 minutos/mes)
+4. Tu propia PC con self-hosted runner
+
+
+================================================================================
+12. RECURSOS ADICIONALES
+================================================================================
+
+Documentación oficial:
+  • GitHub Actions: https://docs.github.com/actions
+  • rust-action: https://github.com/dtolnay/rust-action
+  • setup-android: https://github.com/android-actions/setup-android
+
+Ejemplos de workflows:
+  • https://github.com/actions/starter-workflows
+  • https://github.com/awesome-actions/awesome-actions
+
+
+================================================================================
+                              FIN DE LA GUÍA
+================================================================================
+
+Archivos relacionados:
+  • .github/workflows/build_android.yml (workflow)
+  • DEPENDENCIAS_Y_PASOS_BUILD.txt (build local)
+  • VERSIONES_CORREGIDAS.txt (dependencias)
+  • rust_editor_backup.zip (backup del proyecto)

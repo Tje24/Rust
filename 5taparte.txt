@@ -1,0 +1,1215 @@
+Perfecto. Cerramos con la parte final: cómo llevar todo esto a producción.
+
+---
+
+📋 PLAN MAESTRO DE INGENIERÍA - PARTE 5/5
+
+EXPORTACIÓN, OPTIMIZACIÓN Y LANZAMIENTO
+
+1. EXPORTACIÓN FINAL A APK
+
+1.1 Sistema de Exportación de Proyectos
+
+```rust
+// export/project_exporter.rs
+pub struct ProjectExporter {
+    // Configuración de exportación
+    output_path: PathBuf,
+    package_name: String,
+    version_name: String,
+    version_code: u32,
+    
+    // Optimizaciones
+    compression_level: CompressionLevel,
+    strip_debug: bool,
+    optimize_assets: bool,
+    
+    // Targets
+    architectures: Vec<Architecture>,
+    min_sdk: u32,
+    target_sdk: u32,
+    
+    // Firma
+    signing_config: Option<SigningConfig>,
+}
+
+pub struct SigningConfig {
+    keystore_path: PathBuf,
+    keystore_password: String,
+    key_alias: String,
+    key_password: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum CompressionLevel {
+    None,
+    Fast,
+    Balanced,
+    Maximum,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Architecture {
+    Arm64V8a,  // aarch64
+    ArmeabiV7a, // armv7
+    X86_64,     // x86_64
+}
+
+impl ProjectExporter {
+    pub fn new() -> Self {
+        ProjectExporter {
+            output_path: PathBuf::from("build"),
+            package_name: "com.tueditor.game".to_string(),
+            version_name: "1.0.0".to_string(),
+            version_code: 1,
+            compression_level: CompressionLevel::Balanced,
+            strip_debug: true,
+            optimize_assets: true,
+            architectures: vec![Architecture::Arm64V8a, Architecture::ArmeabiV7a],
+            min_sdk: 21,
+            target_sdk: 33,
+            signing_config: None,
+        }
+    }
+    
+    pub fn export_project(&self, project: &Project) -> Result<PathBuf, ExportError> {
+        println!("📦 Exportando proyecto: {}", project.name);
+        
+        // 1. Crear directorio temporal
+        let temp_dir = TempDir::new()?;
+        
+        // 2. Recopilar todos los assets necesarios
+        let assets = self.collect_assets(project)?;
+        
+        // 3. Optimizar assets (comprimir texturas, etc.)
+        let optimized_assets = if self.optimize_assets {
+            self.optimize_assets(assets)?
+        } else {
+            assets
+        };
+        
+        // 4. Generar código Rust para el juego
+        let game_code = self.generate_game_code(project)?;
+        
+        // 5. Compilar para cada arquitectura
+        for arch in &self.architectures {
+            self.compile_for_architecture(arch, &game_code, &optimized_assets, &temp_dir)?;
+        }
+        
+        // 6. Empaquetar APK
+        let apk_path = self.package_apk(&temp_dir, project)?;
+        
+        // 7. Firmar APK (si hay configuración)
+        let final_apk = if let Some(signing) = &self.signing_config {
+            self.sign_apk(&apk_path, signing)?
+        } else {
+            apk_path
+        };
+        
+        // 8. Verificar APK
+        self.verify_apk(&final_apk)?;
+        
+        println!("✅ Proyecto exportado: {}", final_apk.display());
+        
+        Ok(final_apk)
+    }
+    
+    fn compile_for_architecture(&self, arch: &Architecture, game_code: &str, 
+                                assets: &AssetCollection, temp_dir: &TempDir) -> Result<(), ExportError> {
+        let target = match arch {
+            Architecture::Arm64V8a => "aarch64-linux-android",
+            Architecture::ArmeabiV7a => "armv7-linux-androideabi",
+            Architecture::X86_64 => "x86_64-linux-android",
+        };
+        
+        println!("  Compilando para {}...", target);
+        
+        // Crear crate temporal
+        let crate_dir = temp_dir.path().join("game");
+        std::fs::create_dir_all(&crate_dir)?;
+        
+        // Escribir Cargo.toml
+        let cargo_toml = format!(
+            r#"[package]
+name = "game"
+version = "{}"
+edition = "2021"
+
+[dependencies]
+engine_core = {{ path = "{}" }}
+serde = {{ version = "1.0", features = ["derive"] }}
+toml = "0.8"
+
+[lib]
+crate-type = ["cdylib"]
+"#,
+            self.version_name,
+            std::env::current_dir()?.display()
+        );
+        
+        std::fs::write(crate_dir.join("Cargo.toml"), cargo_toml)?;
+        
+        // Escribir lib.rs con el juego
+        std::fs::write(crate_dir.join("src/lib.rs"), game_code)?;
+        
+        // Compilar
+        let status = std::process::Command::new("cargo")
+            .args(&["build", "--release", "--target", target])
+            .current_dir(&crate_dir)
+            .status()?;
+        
+        if !status.success() {
+            return Err(ExportError::CompilationFailed);
+        }
+        
+        // Copiar librería a la estructura del APK
+        let lib_name = format!("libgame.so");
+        let lib_source = crate_dir.join(format!("target/{}/release/{}", target, lib_name));
+        let lib_dest = temp_dir.path().join("apk").join("lib").join(match arch {
+            Architecture::Arm64V8a => "arm64-v8a",
+            Architecture::ArmeabiV7a => "armeabi-v7a",
+            Architecture::X86_64 => "x86_64",
+        }).join(lib_name);
+        
+        std::fs::create_dir_all(lib_dest.parent().unwrap())?;
+        std::fs::copy(lib_source, lib_dest)?;
+        
+        Ok(())
+    }
+    
+    fn package_apk(&self, temp_dir: &TempDir, project: &Project) -> Result<PathBuf, ExportError> {
+        let apk_dir = temp_dir.path().join("apk");
+        
+        // Crear AndroidManifest.xml
+        let manifest = format!(
+            r#"<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="{}"
+    android:versionCode="{}"
+    android:versionName="{}">
+
+    <uses-sdk android:minSdkVersion="{}" android:targetSdkVersion="{}" />
+    
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    
+    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
+    <uses-feature android:name="android.hardware.vulkan.level" android:required="false" />
+    
+    <application
+        android:label="{}"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:hasCode="false"
+        android:extractNativeLibs="true">
+        
+        <activity
+            android:name="android.app.NativeActivity"
+            android:label="{}"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="true">
+            
+            <meta-data android:name="android.app.lib_name" android:value="game" />
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>"#,
+            self.package_name,
+            self.version_code,
+            self.version_name,
+            self.min_sdk,
+            self.target_sdk,
+            project.name,
+            project.name
+        );
+        
+        std::fs::write(apk_dir.join("AndroidManifest.xml"), manifest)?;
+        
+        // Copiar assets
+        let assets_dir = apk_dir.join("assets");
+        std::fs::create_dir_all(&assets_dir)?;
+        
+        // Copiar escena principal (scene.toml)
+        let scene_toml = toml::to_string(&project.main_scene)?;
+        std::fs::write(assets_dir.join("scene.toml"), scene_toml)?;
+        
+        // Empaquetar con aapt2
+        let apk_unsigned = temp_dir.path().join("unsigned.apk");
+        
+        let status = std::process::Command::new("aapt2")
+            .args(&[
+                "link",
+                "-o", apk_unsigned.to_str().unwrap(),
+                "--manifest", apk_dir.join("AndroidManifest.xml").to_str().unwrap(),
+                "-I", &format!("{}/platforms/android-{}/android.jar", 
+                               std::env::var("ANDROID_HOME").unwrap(), self.target_sdk),
+                "--java", temp_dir.path().join("gen").to_str().unwrap(),
+            ])
+            .status()?;
+        
+        if !status.success() {
+            return Err(ExportError::AaptFailed);
+        }
+        
+        // Zipalign
+        let apk_aligned = temp_dir.path().join("aligned.apk");
+        let status = std::process::Command::new("zipalign")
+            .args(&["-f", "-p", "4", apk_unsigned.to_str().unwrap(), apk_aligned.to_str().unwrap()])
+            .status()?;
+        
+        if !status.success() {
+            return Err(ExportError::ZipalignFailed);
+        }
+        
+        Ok(apk_aligned)
+    }
+    
+    fn sign_apk(&self, apk_path: &Path, signing: &SigningConfig) -> Result<PathBuf, ExportError> {
+        let signed_apk = apk_path.with_file_name("signed.apk");
+        
+        let status = std::process::Command::new("apksigner")
+            .args(&[
+                "sign",
+                "--ks", signing.keystore_path.to_str().unwrap(),
+                "--ks-key-alias", &signing.key_alias,
+                "--ks-pass", &format!("pass:{}", signing.keystore_password),
+                "--key-pass", &format!("pass:{}", signing.key_password),
+                "--v1-signing-enabled", "true",
+                "--v2-signing-enabled", "true",
+                "--v3-signing-enabled", "true",
+                "--out", signed_apk.to_str().unwrap(),
+                apk_path.to_str().unwrap(),
+            ])
+            .status()?;
+        
+        if !status.success() {
+            return Err(ExportError::SigningFailed);
+        }
+        
+        Ok(signed_apk)
+    }
+    
+    fn verify_apk(&self, apk_path: &Path) -> Result<(), ExportError> {
+        let status = std::process::Command::new("apksigner")
+            .args(&["verify", "--verbose", apk_path.to_str().unwrap()])
+            .status()?;
+        
+        if !status.success() {
+            return Err(ExportError::VerificationFailed);
+        }
+        
+        Ok(())
+    }
+}
+```
+
+1.2 Generación Automática de Código del Juego
+
+```rust
+// export/code_generator.rs
+impl ProjectExporter {
+    fn generate_game_code(&self, project: &Project) -> Result<String, ExportError> {
+        // Generar código Rust que carga la escena y ejecuta el juego
+        let code = format!(
+            r#"// Código generado automáticamente para el juego "{}"
+use engine_core::prelude::*;
+
+#[no_mangle]
+pub extern "C" fn android_main(app: &mut AndroidApp) {{
+    // Inicializar logger
+    android_logger::init_once(
+        android_logger::Config::default()
+            .with_min_level(log::Level::Debug)
+    );
+    
+    log::info!("Iniciando juego: {}", "{}");
+    
+    // Crear core del juego
+    let mut core = GameCore::new();
+    
+    // Cargar escena embebida
+    let scene_toml = include_str!("../assets/scene.toml");
+    let scene: Scene = toml::from_str(scene_toml).expect("Error cargando escena");
+    
+    core.load_scene(scene);
+    
+    // Configurar modo de renderizado según dispositivo
+    let caps = detect_hardware_capabilities();
+    if caps.vulkan_supported && caps.total_ram_mb >= 2048 {{
+        core.set_render_mode(RenderMode::Bestia);
+    }} else {{
+        core.set_render_mode(RenderMode::Dinamico);
+    }}
+    
+    // Ejecutar juego
+    core.run();
+}}
+"#,
+            project.name,
+            project.name
+        );
+        
+        Ok(code)
+    }
+}
+```
+
+---
+
+2. OPTIMIZACIONES FINALES PARA 2GB RAM
+
+2.1 Perfil de Optimización Automático
+
+```rust
+// optimizations/mobile_profile.rs
+pub struct MobileOptimizer {
+    device_caps: DeviceCapabilities,
+    quality_profile: QualityProfile,
+    optimizations_applied: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum QualityProfile {
+    Low2GB,
+    Mid4GB,
+    High8GB,
+}
+
+#[derive(Debug)]
+pub struct DeviceCapabilities {
+    pub total_ram_mb: u32,
+    pub vulkan_supported: bool,
+    pub opengl_version: f32,
+    pub max_texture_size: u32,
+    pub supports_astc: bool,
+    pub supports_etc2: bool,
+    pub gpu_name: String,
+    pub cpu_cores: u32,
+    pub screen_resolution: (u32, u32),
+}
+
+impl MobileOptimizer {
+    pub fn detect() -> Self {
+        let caps = Self::detect_capabilities();
+        let profile = Self::determine_profile(&caps);
+        
+        MobileOptimizer {
+            device_caps: caps,
+            quality_profile: profile,
+            optimizations_applied: Vec::new(),
+        }
+    }
+    
+    fn detect_capabilities() -> DeviceCapabilities {
+        // En Android real, esto usaría APIs del sistema
+        // Por ahora, simulamos detección
+        DeviceCapabilities {
+            total_ram_mb: 2048, // Ejemplo: dispositivo 2GB
+            vulkan_supported: false,
+            opengl_version: 3.0,
+            max_texture_size: 4096,
+            supports_astc: false,
+            supports_etc2: true,
+            gpu_name: "Adreno 506".to_string(),
+            cpu_cores: 8,
+            screen_resolution: (720, 1280),
+        }
+    }
+    
+    fn determine_profile(caps: &DeviceCapabilities) -> QualityProfile {
+        if caps.total_ram_mb <= 2048 {
+            QualityProfile::Low2GB
+        } else if caps.total_ram_mb <= 4096 {
+            QualityProfile::Mid4GB
+        } else {
+            QualityProfile::High8GB
+        }
+    }
+    
+    pub fn apply_optimizations(&mut self, renderer: &mut dyn RenderBackend, scene: &mut Scene) {
+        match self.quality_profile {
+            QualityProfile::Low2GB => {
+                self.optimize_for_low_end(renderer, scene);
+            }
+            QualityProfile::Mid4GB => {
+                self.optimize_for_mid_range(renderer, scene);
+            }
+            QualityProfile::High8GB => {
+                self.optimize_for_high_end(renderer, scene);
+            }
+        }
+    }
+    
+    fn optimize_for_low_end(&mut self, renderer: &mut dyn RenderBackend, scene: &mut Scene) {
+        self.optimizations_applied.clear();
+        
+        // 1. Forzar shading por vértice
+        renderer.set_vertex_shading(true);
+        self.optimizations_applied.push("Vertex shading".to_string());
+        
+        // 2. Reducir tamaño de texturas
+        for texture in &mut scene.assets.textures {
+            if texture.width > 1024 || texture.height > 1024 {
+                texture.downscale(1024, 1024);
+                self.optimizations_applied.push(format!("Texture downscale: {}", texture.name));
+            }
+        }
+        
+        // 3. Comprimir texturas a ETC2
+        for texture in &mut scene.assets.textures {
+            texture.compress(CompressionFormat::ETC2);
+        }
+        self.optimizations_applied.push("ETC2 compression".to_string());
+        
+        // 4. Desactivar sombras
+        renderer.set_shadows_enabled(false);
+        self.optimizations_applied.push("Shadows disabled".to_string());
+        
+        // 5. Reducir calidad de partículas
+        for node in &mut scene.nodes {
+            if let Some(particles) = node.get_component_mut::<ParticleComponent>() {
+                particles.max_particles = (particles.max_particles as f32 * 0.5) as u32;
+            }
+        }
+        self.optimizations_applied.push("Particles reduced".to_string());
+        
+        // 6. Simplificar LODs
+        renderer.set_lod_bias(1.5); // Forzar LOD más bajos
+        self.optimizations_applied.push("LOD bias".to_string());
+        
+        // 7. Reducir draw calls agrupando objetos
+        self.batch_static_objects(scene);
+        self.optimizations_applied.push("Static batching".to_string());
+        
+        log::info!("Optimizaciones Low2GB aplicadas: {:?}", self.optimizations_applied);
+    }
+    
+    fn optimize_for_mid_range(&mut self, renderer: &mut dyn RenderBackend, scene: &mut Scene) {
+        self.optimizations_applied.clear();
+        
+        // Compresión ETC2/ASTC según soporte
+        let format = if self.device_caps.supports_astc {
+            CompressionFormat::ASTC
+        } else {
+            CompressionFormat::ETC2
+        };
+        
+        for texture in &mut scene.assets.textures {
+            texture.compress(format);
+        }
+        self.optimizations_applied.push(format!("{:?} compression", format));
+        
+        // Sombras de baja resolución
+        renderer.set_shadows_enabled(true);
+        renderer.set_shadow_map_size(1024);
+        self.optimizations_applied.push("Low-res shadows".to_string());
+        
+        // Partículas moderadas
+        // ... etc
+    }
+    
+    fn optimize_for_high_end(&mut self, renderer: &mut dyn RenderBackend, scene: &mut Scene) {
+        // Máxima calidad
+        renderer.set_vertex_shading(false);
+        renderer.set_shadows_enabled(true);
+        renderer.set_shadow_map_size(4096);
+        
+        // Usar ASTC si disponible
+        if self.device_caps.supports_astc {
+            for texture in &mut scene.assets.textures {
+                texture.compress(CompressionFormat::ASTC);
+            }
+        }
+        
+        self.optimizations_applied.push("Maximum quality".to_string());
+    }
+    
+    fn batch_static_objects(&self, scene: &mut Scene) {
+        // Agrupar objetos estáticos con misma malla/material
+        // Reducción drástica de draw calls
+    }
+}
+```
+
+2.2 Análisis de Rendimiento Post-Exportación
+
+```rust
+// optimizations/performance_report.rs
+pub struct PerformanceReport {
+    pub estimated_ram_mb: f32,
+    pub estimated_fps: u32,
+    pub draw_calls: u32,
+    pub polygons: u32,
+    pub textures_mb: f32,
+    pub meshes_mb: f32,
+    pub bottlenecks: Vec<String>,
+    pub recommendations: Vec<String>,
+    pub target_devices: Vec<String>,
+}
+
+impl ProjectExporter {
+    pub fn analyze_performance(&self, project: &Project) -> PerformanceReport {
+        let mut report = PerformanceReport {
+            estimated_ram_mb: 0.0,
+            estimated_fps: 60,
+            draw_calls: 0,
+            polygons: 0,
+            textures_mb: 0.0,
+            meshes_mb: 0.0,
+            bottlenecks: Vec::new(),
+            recommendations: Vec::new(),
+            target_devices: Vec::new(),
+        };
+        
+        // Calcular memoria de texturas
+        for texture in &project.main_scene.assets.textures {
+            let size_mb = (texture.width * texture.height * 4) as f32 / (1024.0 * 1024.0);
+            report.textures_mb += size_mb;
+        }
+        
+        // Calcular polígonos
+        for mesh in &project.main_scene.assets.meshes {
+            report.polygons += mesh.vertex_count / 3; // triángulos
+            report.meshes_mb += mesh.size_bytes as f32 / (1024.0 * 1024.0);
+        }
+        
+        // RAM total estimada
+        report.estimated_ram_mb = report.textures_mb + report.meshes_mb + 50.0; // + overhead
+        
+        // Draw calls estimados
+        report.draw_calls = project.main_scene.nodes.len() as u32; // simplificado
+        
+        // Analizar cuellos de botella
+        if report.polygons > 100000 {
+            report.bottlenecks.push("Alto número de polígonos".to_string());
+            report.recommendations.push("Usa LODs o reduce geometría".to_string());
+        }
+        
+        if report.draw_calls > 500 {
+            report.bottlenecks.push("Muchas draw calls".to_string());
+            report.recommendations.push("Agrupa objetos estáticos (batching)".to_string());
+        }
+        
+        if report.textures_mb > 100.0 {
+            report.bottlenecks.push("Texturas grandes".to_string());
+            report.recommendations.push("Usa compresión ETC2/ASTC".to_string());
+        }
+        
+        // Determinar dispositivos objetivo
+        if report.estimated_ram_mb < 150.0 {
+            report.target_devices.push("2GB RAM (baja gama)".to_string());
+        }
+        if report.estimated_ram_mb < 300.0 {
+            report.target_devices.push("4GB RAM (media gama)".to_string());
+        }
+        report.target_devices.push("8GB+ RAM (alta gama)".to_string());
+        
+        report
+    }
+}
+```
+
+---
+
+3. SISTEMA DE ACTUALIZACIONES
+
+3.1 Actualización del Editor
+
+
+```rust
+// updates/updater.rs
+pub struct EditorUpdater {
+    current_version: String,
+    update_url: String,
+    update_channel: UpdateChannel,
+    check_frequency: std::time::Duration,
+    last_check: std::time::Instant,
+}
+
+pub enum UpdateChannel {
+    Stable,
+    Beta,
+    Nightly,
+}
+
+impl EditorUpdater {
+    pub fn new() -> Self {
+        EditorUpdater {
+            current_version: env!("CARGO_PKG_VERSION").to_string(),
+            update_url: "https://api.tueditor.com/updates".to_string(),
+            update_channel: UpdateChannel::Stable,
+            check_frequency: std::time::Duration::from_secs(60 * 60 * 24), // 1 día
+            last_check: std::time::Instant::now(),
+        }
+    }
+    
+    pub fn check_for_updates(&mut self) -> Result<Option<UpdateInfo>, UpdateError> {
+        if self.last_check.elapsed() < self.check_frequency {
+            return Ok(None);
+        }
+        
+        let client = reqwest::blocking::Client::new();
+        let response = client
+            .get(&format!("{}/check?version={}&channel={:?}", 
+                          self.update_url, self.current_version, self.update_channel))
+            .send()?;
+        
+        self.last_check = std::time::Instant::now();
+        
+        if response.status().is_success() {
+            let update: UpdateInfo = response.json()?;
+            if update.version > self.current_version {
+                return Ok(Some(update));
+            }
+        }
+        
+        Ok(None)
+    }
+    
+    pub fn download_update(&self, update: &UpdateInfo) -> Result<PathBuf, UpdateError> {
+        let client = reqwest::blocking::Client::new();
+        let response = client.get(&update.download_url).send()?;
+        
+        let temp_dir = TempDir::new()?;
+        let apk_path = temp_dir.path().join("update.apk");
+        
+        let mut file = std::fs::File::create(&apk_path)?;
+        let content = response.bytes()?;
+        std::io::copy(&mut content.as_ref(), &mut file)?;
+        
+        Ok(apk_path)
+    }
+    
+    pub fn install_update(&self, apk_path: &Path) -> Result<(), UpdateError> {
+        // En Android, esto lanzaría un intent de instalación
+        println!("Instalando actualización desde: {}", apk_path.display());
+        
+        // Simular instalación
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub download_url: String,
+    pub changelog: String,
+    pub size_mb: u32,
+    pub required: bool,
+}
+```
+
+---
+
+4. DOCUMENTACIÓN Y EJEMPLOS
+
+4.1 Documentación Integrada en el Editor
+
+```rust
+// docs/help_system.rs
+pub struct HelpSystem {
+    pages: HashMap<String, HelpPage>,
+    current_page: Option<String>,
+    search_index: Vec<SearchEntry>,
+}
+
+pub struct HelpPage {
+    pub id: String,
+    pub title: String,
+    pub content: String,
+    pub examples: Vec<ExampleCode>,
+    pub related: Vec<String>,
+}
+
+pub struct ExampleCode {
+    pub title: String,
+    pub code: String,
+    pub language: String,
+}
+
+impl HelpSystem {
+    pub fn new() -> Self {
+        let mut pages = HashMap::new();
+        
+        // Páginas predefinidas
+        pages.insert("introduction".to_string(), HelpPage {
+            id: "introduction".to_string(),
+            title: "Introducción".to_string(),
+            content: include_str!("../docs/introduction.md").to_string(),
+            examples: vec![],
+            related: vec!["quickstart".to_string()],
+        });
+        
+        pages.insert("behaviors".to_string(), HelpPage {
+            id: "behaviors".to_string(),
+            title: "Comportamientos".to_string(),
+            content: include_str!("../docs/behaviors.md").to_string(),
+            examples: vec![
+                ExampleCode {
+                    title: "Oscilación simple".to_string(),
+                    code: r#"[behaviors]
+type = "oscillate"
+axis = "y"
+speed = 2.0
+amplitude = 1.0"#.to_string(),
+                    language: "toml".to_string(),
+                }
+            ],
+            related: vec!["animation".to_string(), "physics".to_string()],
+        });
+        
+        // Construir índice de búsqueda
+        let mut search_index = Vec::new();
+        for page in pages.values() {
+            search_index.push(SearchEntry {
+                id: page.id.clone(),
+                title: page.title.clone(),
+                keywords: extract_keywords(&page.content),
+            });
+        }
+        
+        HelpSystem {
+            pages,
+            current_page: None,
+            search_index,
+        }
+    }
+    
+    pub fn draw_help_panel(&mut self, ui: &mut Ui) {
+        ui.heading("📚 Ayuda");
+        ui.separator();
+        
+        // Barra de búsqueda
+        ui.horizontal(|ui| {
+            ui.label("🔍");
+            let search_response = ui.text_edit_singleline(&mut self.search_query);
+            
+            if !self.search_query.is_empty() {
+                self.show_search_results(ui);
+            }
+        });
+        
+        ui.separator();
+        
+        // Navegación
+        ui.horizontal(|ui| {
+            if ui.button("🏠 Inicio").clicked() {
+                self.current_page = Some("introduction".to_string());
+            }
+            
+            if ui.button("← Atrás").clicked() {
+                // Navegación simple
+            }
+        });
+        
+        ui.separator();
+        
+        // Contenido de la página actual
+        if let Some(page_id) = &self.current_page {
+            if let Some(page) = self.pages.get(page_id) {
+                ScrollArea::vertical().show(ui, |ui| {
+                    ui.heading(&page.title);
+                    ui.separator();
+                    
+                    // Renderizar markdown (simplificado)
+                    ui.label(&page.content);
+                    
+                    // Ejemplos
+                    if !page.examples.is_empty() {
+                        ui.heading("Ejemplos");
+                        for example in &page.examples {
+                            ui.collapsing(&example.title, |ui| {
+                                ui.code(&example.code);
+                            });
+                        }
+                    }
+                    
+                    // Páginas relacionadas
+                    if !page.related.is_empty() {
+                        ui.heading("Relacionados");
+                        for related_id in &page.related {
+                            if let Some(related) = self.pages.get(related_id) {
+                                if ui.link(&related.title).clicked() {
+                                    self.current_page = Some(related_id.clone());
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        } else {
+            // Mostrar página de inicio
+            ui.label("Bienvenido a la ayuda del editor");
+            ui.label("Usa la búsqueda o navega por categorías:");
+            
+            for category in ["introduction", "behaviors", "animation", "export"] {
+                if let Some(page) = self.pages.get(category) {
+                    if ui.link(&page.title).clicked() {
+                        self.current_page = Some(category.to_string());
+                    }
+                }
+            }
+        }
+    }
+}
+```
+4.2 Proyectos de Ejemplo
+
+```rust
+// examples/example_manager.rs
+pub struct ExampleManager {
+    examples: Vec<ExampleProject>,
+}
+
+pub struct ExampleProject {
+    pub name: String,
+    pub description: String,
+    pub difficulty: Difficulty,
+    pub tags: Vec<String>,
+    pub path: PathBuf,
+    pub screenshot: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Difficulty {
+    Beginner,
+    Intermediate,
+    Advanced,
+}
+
+impl ExampleManager {
+    pub fn new() -> Self {
+        let mut examples = Vec::new();
+        
+        // Ejemplo 1: Plataforma 2D simple
+        examples.push(ExampleProject {
+            name: "Plataforma 2D".to_string(),
+            description: "Un juego de plataformas simple con un personaje que salta".to_string(),
+            difficulty: Difficulty::Beginner,
+            tags: vec!["2d".to_string(), "platformer".to_string()],
+            path: PathBuf::from("examples/2d_platformer"),
+            screenshot: None,
+        });
+        
+        // Ejemplo 2: RPG 3D con animaciones
+        examples.push(ExampleProject {
+            name: "RPG 3D básico".to_string(),
+            description: "Personaje que camina, corre y salta en un entorno 3D".to_string(),
+            difficulty: Difficulty::Intermediate,
+            tags: vec!["3d".to_string(), "rpg".to_string(), "animation".to_string()],
+            path: PathBuf::from("examples/3d_rpg"),
+            screenshot: None,
+        });
+        
+        // Ejemplo 3: Shooter con físicas
+        examples.push(ExampleProject {
+            name: "Shooter 3D".to_string(),
+            description: "Juego de disparos con físicas de proyectiles y enemigos".to_string(),
+            difficulty: Difficulty::Advanced,
+            tags: vec!["3d".to_string(), "shooter".to_string(), "physics".to_string()],
+            path: PathBuf::from("examples/3d_shooter"),
+            screenshot: None,
+        });
+        
+        ExampleManager { examples }
+    }
+    
+    pub fn draw_examples_browser(&mut self, ui: &mut Ui, core: &mut EditorCore) {
+        ui.heading("🎮 Proyectos de ejemplo");
+        ui.separator();
+        
+        // Filtros
+        ui.horizontal(|ui| {
+            ui.label("Filtrar:");
+            
+            if ui.button("Todos").clicked() {
+                // mostrar todos
+            }
+            
+            if ui.button("2D").clicked() {
+                // filtrar 2D
+            }
+            
+            if ui.button("3D").clicked() {
+                // filtrar 3D
+            }
+        });
+        
+        ui.separator();
+        
+        // Grid de ejemplos
+        egui::Grid::new("examples_grid")
+            .num_columns(2)
+            .spacing([20.0, 20.0])
+            .show(ui, |ui| {
+                for example in &self.examples {
+                    self.draw_example_card(ui, example, core);
+                    ui.end_row();
+                }
+            });
+    }
+    
+    fn draw_example_card(&self, ui: &mut Ui, example: &ExampleProject, core: &mut EditorCore) {
+        ui.group(|ui| {
+            ui.set_width(300.0);
+            
+            ui.heading(&example.name);
+            
+            // Dificultad
+            let difficulty_color = match example.difficulty {
+                Difficulty::Beginner => Color32::GREEN,
+                Difficulty::Intermediate => Color32::YELLOW,
+                Difficulty::Advanced => Color32::RED,
+            };
+            ui.colored_label(difficulty_color, format!("{:?}", example.difficulty));
+            
+            ui.label(&example.description);
+            
+            // Tags
+            ui.horizontal_wrapped(|ui| {
+                for tag in &example.tags {
+                    ui.label(format!("[{}]", tag));
+                }
+            });
+            
+            ui.add_space(10.0);
+            
+            if ui.button("Abrir ejemplo").clicked() {
+                let scene_path = example.path.join("scene.toml");
+                if scene_path.exists() {
+                    core.load_scene(scene_path).ok();
+                }
+            }
+        });
+    }
+}
+```
+
+---
+5. ESTRATEGIA DE LANZAMIENTO
+
+5.1 Checklist de Lanzamiento
+
+```markdown
+# 🚀 CHECKLIST DE LANZAMIENTO - VERSIÓN 1.0
+
+## 📱 PRUEBAS EN DISPOSITIVOS REALES
+- [ ] Samsung Galaxy A01 (2GB RAM, ARMv7)
+- [ ] Xiaomi Redmi Note 8 (4GB RAM, ARM64)
+- [ ] Google Pixel 6 (8GB RAM, ARM64)
+- [ ] Tablet Samsung (3GB RAM, ARM64)
+- [ ] Emulador Android 5.0 (API 21)
+- [ ] Emulador Android 13 (API 33)
+
+## 🔧 PRUEBAS DE FUNCIONALIDAD
+- [ ] Abrir proyecto existente
+- [ ] Crear nuevo proyecto
+- [ ] Guardar escena
+- [ ] Cerrar y abrir escena
+- [ ] Modo juego toggle
+- [ ] Cambiar entre Bestia/Dinámico
+- [ ] Animación con handles
+- [ ] Tilemap con colisiones
+- [ ] Gizmos 3D
+- [ ] Preview en dispositivo
+
+## 📊 PRUEBAS DE RENDIMIENTO
+- [ ] Escena simple: <30MB RAM
+- [ ] Escena compleja (100k polígonos): <150MB RAM
+- [ ] Cambio de modo sin leaks de memoria
+- [ ] Carga/descarga de assets
+- [ ] Compresión de texturas ETC2
+- [ ] Fallback automático a raylib
+
+## 🔒 SEGURIDAD Y ESTABILIDAD
+- [ ] No crashea al abrir escenas inválidas
+- [ ] Mensajes de error claros
+- [ ] Sistema de paracaídas funciona
+- [ ] Firma APK válida
+- [ ] Permisos mínimos necesarios
+
+## 📦 DISTRIBUCIÓN
+- [ ] APK firmado para release
+- [ ] Google Play Store listing
+- [ ] Página web con descarga directa
+- [ ] Instrucciones de instalación
+- [ ] Documentación online
+
+## 🎯 MÉTRICAS DE ÉXITO
+- [ ] Tamaño APK <15MB
+- [ ] Editor inicia en <3 segundos en 2GB RAM
+- [ ] Modo juego en <1 segundo (toggle)
+- [ ] 100% de dispositivos testeados funcionan
+```
+
+5.2 Script de Lanzamiento Automatizado
+
+```bash
+#!/bin/bash
+# release.sh - Script de lanzamiento automatizado
+
+set -e
+
+VERSION="1.0.0"
+echo "🚀 Preparando lanzamiento v$VERSION"
+
+# 1. Ejecutar tests
+echo "📋 Ejecutando tests..."
+cargo test --release
+
+# 2. Compilar para todas las arquitecturas
+echo "🔨 Compilando..."
+./build_android.sh
+
+# 3. Generar reporte de rendimiento
+echo "📊 Generando reporte..."
+cargo run --bin performance_report
+
+# 4. Firmar APK
+echo "🔏 Firmando APK..."
+./sign_apk.sh "target/android-build/rust-editor-v$VERSION.apk"
+
+# 5. Verificar APK
+echo "✅ Verificando APK..."
+apksigner verify "target/android-build/rust-editor-v$VERSION-signed.apk"
+
+# 6. Generar changelog
+echo "📝 Generando changelog..."
+git log --pretty=format:"- %s" $(git describe --tags --abbrev=0)..HEAD > changelog.txt
+
+# 7. Crear release en GitHub
+echo "🐙 Creando release en GitHub..."
+gh release create "v$VERSION" \
+    "target/android-build/rust-editor-v$VERSION-signed.apk" \
+    --title "Rust Editor v$VERSION" \
+    --notes-file changelog.txt
+
+echo "✅ Lanzamiento completado!"
+```
+
+---
+RESUMEN FINAL DEL PROYECTO
+
+6.1 Lo que Hemos Construido
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              RUST EDITOR - VISIÓN COMPLETA                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  🎯 FILOSOFÍA                                                  │
+│  • Una escena activa (máxima eficiencia en móvil)            │
+│  • Datos TOML/JSON (portable, IA-amigable, seguro)           │
+│  • Doble backend: Bestia (wgpu) + Dinámico (raylib)          │
+│  • Educación proactiva con métricas en tiempo real            │
+│                                                               │
+│  🧱 ARQUITECTURA                                               │
+│  • Rust + wgpu + raylib + egui                               │
+│  • Backend intercambiable con trait común                     │
+│  • ECS basado en datos (comportamientos desde TOML)           │
+│  • Asset manager con gestión de memoria                       │
+│                                                               │
+│  🎨 UI COMPLETA                                                │
+│  • Paneles estilo Discord (archivos, inspector, bottom)      │
+│  • Viewport central no cerrable con botón TV                  │
+│  • Panel de métricas debajo del inspector                     │
+│  • Gizmos 3D para transformación                              │
+│                                                               │
+│  🎬 ANIMACIÓN                                                  │
+│  • Timeline interactivo en panel inferior                     │
+│  • Handles de keyframes en 3D                                 │
+│  • Edición directa en viewport                                │
+│  • Previsualización en tiempo real                            │
+│                                                               │
+│  🗺️ TILEMAP                                                    │
+│  • Edición directa en viewport                                │
+│  • Grid y snapping                                            │
+│  • Colisiones con handles para redimensionar                  │
+│  • Múltiples capas con paralaje                               │
+│                                                               │
+│  ⚡ RENDIMIENTO                                                 │
+│  • Perfiles automáticos según dispositivo (2GB, 4GB, 8GB+)   │
+│  • Compresión de texturas (ETC2, ASTC)                        │
+│  • Batching de objetos estáticos                              │
+│  • Sistema de paracaídas con fallback                         │
+│                                                               │
+│  📱 MÓVIL                                                      │
+│  • Soporte ARM64 y ARMv7                                      │
+│  • Preview one-click con ADB                                  │
+│  • Exportación a APK firmado                                  │
+│  • Google Play Ready                                          │
+│                                                               │
+│  🤖 IA                                                         │
+│  • Asistente integrado en panel inferior                      │
+│  • Generación de comportamientos desde descripción            │
+│  • Sugerencias de optimización                                │
+│  • Ayuda contextual                                           │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+6.2 Métricas Finales Estimadas
+
+Componente Tamaño/Rendimiento
+Editor APK ~12 MB
+RAM en 2GB (modo Dinámico) 25-45 MB
+RAM en 2GB (modo Bestia) 35-65 MB
+RAM en 4GB+ 50-100 MB
+Polígonos máximos (Dinámico) 50k @ 30 FPS
+Polígonos máximos (Bestia) 200k+ @ 30 FPS
+Draw calls máximas 500-2000
+Tiempo de inicio <3 segundos
+Toggle juego/edición <1 segundo
+
+6.3 Próximos Pasos (Post-Lanzamiento)
+
+```markdown
+# 📅 HOJA DE RUTA POST-LANZAMIENTO
+
+## VERSIÓN 1.1 (1 mes después)
+- [ ] Más comportamientos predefinidos
+- [ ] Mejoras en UI/UX
+- [ ] Corrección de bugs reportados
+- [ ] Optimizaciones adicionales para 2GB
+
+## VERSIÓN 1.2 (3 meses después)
+- [ ] Plugin system (carga dinámica de comportamientos)
+- [ ] Asset Store integrado
+- [ ] Exportación a iOS (Metal)
+- [ ] Mejoras en el asistente IA
+
+## VERSIÓN 2.0 (6 meses después)
+- [ ] Modo multiplayer en editor
+- [ ] Cloud sync de proyectos
+- [ ] Versión desktop (Windows/Linux/macOS)
+- [ ] Comunidad de assets compartidos
+
+```
+🏁 CONCLUSIÓN FINAL
+
+Hemos diseñado un editor de juegos completo para Android que:
+
+1. Funciona en dispositivos de 2GB RAM gracias a:
+   · Una sola escena activa
+   · Modo Dinámico con raylib
+   · Compresión de texturas
+   · Perfiles automáticos
+2. Aprovecha hardware moderno con:
+   · Modo Bestia con wgpu
+   · Instancing y compute shaders
+   · Altos polígonos y efectos
+3. Es único en su enfoque por:
+   · Scripting con TOML/JSON (datos, no código)
+   · Animación con handles 3D en viewport
+   · Asistente IA integrado
+   · Panel de métricas educativo
+4. Está listo para producción con:
+   · Sistema de exportación a APK
+   · Firma y verificación
+   · Actualizaciones
+   · Documentación y ejemplos

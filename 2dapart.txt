@@ -1,0 +1,960 @@
+Perfecto. Continuamos con el plan maestro.
+
+---
+
+📋 PLAN MAESTRO DE INGENIERÍA - PARTE 2/5
+
+UI COMPLETA CON EGUI Y VIEWPORT CENTRAL
+
+1. ARQUITECTURA DE UI CON EGUI (ESTILO DISCORD)
+
+1.1 Estructura General de Paneles
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ┌────────────┐  ┌─────────────────────────┐  ┌──────────┐  │
+│  │            │  │                         │  │          │  │
+│  │   FILES    │  │      VIEWPORT            │  │ INSPECTOR│  │
+│  │   PANEL    │  │   (No cerrable)          │  │  PANEL   │  │
+│  │  (Fijo)    │  │   ┌──────────────────┐  │  │(Expandible│  │
+│  │            │  │   │  Botón TV Modos  │  │  │ y colaps.)│  │
+│  │            │  │   │  2D|3D|SCRIPT|▶  │  │  │          │  │
+│  │            │  │   └──────────────────┘  │  │          │  │
+│  └────────────┘  └─────────────────────────┘  └──────────┘  │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │           PANEL INFERIOR (Pestañas)                     │ │
+│  │  ┌──────────┬──────────┬──────────┬──────────┐         │ │
+│  │  │ ANIMACIÓN│ TILEMAP  │  DEBUG   │  SALIDA  │         │ │
+│  │  └──────────┴──────────┴──────────┴──────────┘         │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │      PANEL DE MÉTRICAS (Debajo del Inspector)           │ │
+│  │  ⚡ BESTIA | RAM:45MB | CPU:30% | GPU:40% | FPS:60      │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+1.2 Estado Global de UI
+
+```rust
+// ui/state.rs
+use egui::{Context, Id};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ViewportMode {
+    Mode2D,
+    Mode3D,
+    Script,
+    Game, // Modo juego (toggle con ▶)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RenderMode {
+    Bestia,   // wgpu
+    Dinamico, // raylib
+}
+
+#[derive(Debug, Clone)]
+pub struct PanelState {
+    pub expanded: bool,
+    pub width: f32,
+    pub height: f32,
+    pub position: Option<egui::Pos2>,
+    pub visible: bool,
+}
+
+pub struct UIState {
+    // Modos actuales
+    pub viewport_mode: ViewportMode,
+    pub render_mode: RenderMode,
+    
+    // Estado de paneles
+    pub left_panel: PanelState,   // Archivos
+    pub right_panel: PanelState,  // Inspector
+    pub bottom_panel: PanelState, // Pestañas inferiores
+    pub metrics_panel: PanelState, // Debajo del inspector
+    
+    // Pestaña activa en panel inferior
+    pub bottom_tab: BottomTab,
+    
+    // Selección actual
+    pub selected_nodes: Vec<Uuid>,
+    pub hovered_node: Option<Uuid>,
+    
+    // Historial de UI para persistencia
+    pub panel_layouts: HashMap<String, PanelState>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BottomTab {
+    Animation,
+    Tilemap,
+    Debug,
+    Output,
+}
+
+impl UIState {
+    pub fn new() -> Self {
+        UIState {
+            viewport_mode: ViewportMode::Mode3D,
+            render_mode: RenderMode::Bestia, // Por defecto, pero fallback automático
+            
+            left_panel: PanelState {
+                expanded: true,
+                width: 200.0,
+                height: 0.0,
+                position: None,
+                visible: true,
+            },
+            
+            right_panel: PanelState {
+                expanded: true,
+                width: 250.0,
+                height: 0.0,
+                position: None,
+                visible: true,
+            },
+            
+            bottom_panel: PanelState {
+                expanded: true,
+                width: 0.0,
+                height: 200.0,
+                position: None,
+                visible: true,
+            },
+            
+            metrics_panel: PanelState {
+                expanded: true,
+                width: 250.0,
+                height: 150.0,
+                position: None,
+                visible: true,
+            },
+            
+            bottom_tab: BottomTab::Animation,
+            selected_nodes: Vec::new(),
+            hovered_node: None,
+            panel_layouts: HashMap::new(),
+        }
+    }
+    
+    pub fn toggle_render_mode(&mut self) {
+        self.render_mode = match self.render_mode {
+            RenderMode::Bestia => RenderMode::Dinamico,
+            RenderMode::Dinamico => RenderMode::Bestia,
+        };
+    }
+    
+    pub fn toggle_viewport_mode(&mut self) {
+        self.viewport_mode = match self.viewport_mode {
+            ViewportMode::Mode2D => ViewportMode::Mode3D,
+            ViewportMode::Mode3D => ViewportMode::Script,
+            ViewportMode::Script => ViewportMode::Game,
+            ViewportMode::Game => ViewportMode::Mode2D,
+        };
+    }
+    
+    // Guardar layout para persistencia entre sesiones
+    pub fn save_layout(&mut self, ctx: &egui::Context) {
+        // egui tiene sistema de memoria automático con IDs
+        ctx.memory_mut(|mem| {
+            mem.data.insert_temp(Id::new("ui_state"), self.clone());
+        });
+    }
+}
+```
+
+1.3 Implementación Principal de UI
+
+```rust
+// ui/mod.rs
+use egui::*;
+use crate::core::EditorCore;
+use crate::render::RenderBackend;
+
+pub struct EditorUI {
+    state: UIState,
+    fonts: FontDefinitions,
+    textures: HashMap<String, TextureHandle>,
+}
+
+impl EditorUI {
+    pub fn new() -> Self {
+        let mut fonts = FontDefinitions::default();
+        
+        // Configurar fuentes (importante para móvil)
+        fonts.font_data.insert(
+            "roboto".to_owned(),
+            FontData::from_static(include_bytes!("../../assets/fonts/Roboto-Regular.ttf")),
+        );
+        
+        fonts.families.insert(
+            FontFamily::Proportional,
+            vec!["roboto".to_owned()],
+        );
+        
+        EditorUI {
+            state: UIState::new(),
+            fonts,
+            textures: HashMap::new(),
+        }
+    }
+    
+    pub fn draw(&mut self, ctx: &Context, core: &mut EditorCore) {
+        // Panel izquierdo - Archivos (fijo, no colapsable)
+        SidePanel::left("files_panel")
+            .width_range(150.0..=300.0)
+            .resizable(true)
+            .show(ctx, |ui| {
+                self.draw_files_panel(ui, core);
+            });
+        
+        // Panel derecho - Inspector (expandible y colapsable)
+        SidePanel::right("inspector_panel")
+            .width_range(200.0..=400.0)
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.vertical(|ui| {
+                    // Parte superior: Inspector de propiedades
+                    ScrollArea::vertical()
+                        .max_height(ui.available_height() - 160.0) // Dejar espacio para métricas
+                        .show(ui, |ui| {
+                            self.draw_inspector(ui, core);
+                        });
+                    
+                    ui.separator();
+                    
+                    // Panel de métricas (debajo del inspector)
+                    self.draw_metrics_panel(ui, core.renderer.as_ref());
+                });
+            });
+        
+        // Panel central - Viewport (NO CERRABLE)
+        CentralPanel::default().show(ctx, |ui| {
+            self.draw_viewport(ui, core);
+        });
+        
+        // Panel inferior - Pestañas
+        TopBottomPanel::bottom("bottom_panel")
+            .height_range(150.0..=300.0)
+            .show(ctx, |ui| {
+                self.draw_bottom_panel(ui, core);
+            });
+    }
+    
+    fn draw_files_panel(&mut self, ui: &mut Ui, core: &mut EditorCore) {
+        ui.heading("📁 Archivos");
+        ui.separator();
+        
+        // Sistema de archivos simple
+        if let Some(project_path) = &core.project_path {
+            // Mostrar árbol de directorios
+            self.draw_directory_tree(ui, project_path);
+        } else {
+            ui.label("No hay proyecto abierto");
+            if ui.button("Abrir proyecto").clicked() {
+                // Abrir selector de archivos
+                core.open_project_dialog();
+            }
+        }
+        
+        ui.add_space(10.0);
+        
+        // Botones rápidos
+        ui.horizontal(|ui| {
+            if ui.button("➕ Nueva escena").clicked() {
+                core.create_new_scene();
+            }
+            
+            if ui.button("📂 Abrir").clicked() {
+                core.open_scene_dialog();
+            }
+        });
+    }
+    
+    fn draw_inspector(&mut self, ui: &mut Ui, core: &mut EditorCore) {
+        ui.heading("🔍 Inspector");
+        ui.separator();
+        
+        if let Some(scene) = &core.scene_manager.current_scene {
+            if let Some(selected_id) = self.state.selected_nodes.first() {
+                if let Some(node) = scene.find_node(*selected_id) {
+                    self.draw_node_properties(ui, node, core);
+                } else {
+                    ui.label("Nodo no encontrado");
+                }
+            } else {
+                // Mostrar propiedades de la escena
+                self.draw_scene_properties(ui, scene, core);
+            }
+        } else {
+            ui.label("No hay escena cargada");
+        }
+    }
+    
+    fn draw_metrics_panel(&mut self, ui: &mut Ui, renderer: &dyn RenderBackend) {
+        let metrics = renderer.get_metrics();
+        
+        // Header con indicador de modo
+        ui.horizontal(|ui| {
+            match renderer.get_backend_type() {
+                BackendType::Wgpu => {
+                    ui.colored_label(Color32::from_rgb(255, 200, 0), "⚡ MODO BESTIA (wgpu)");
+                }
+                BackendType::Raylib => {
+                    ui.colored_label(Color32::from_rgb(100, 200, 255), "📱 MODO DINÁMICO (raylib)");
+                }
+            }
+            
+            // Botón para cambiar modo (si el hardware lo soporta)
+            if ui.button("🔄").clicked() {
+                self.state.toggle_render_mode();
+                // Notificar al core para cambiar backend
+            }
+        });
+        
+        ui.separator();
+        
+        // Métricas principales con barras de progreso
+        ui.horizontal(|ui| {
+            ui.label("💾 RAM:");
+            let ram_percent = metrics.ram_mb / 2000.0 * 100.0; // Asumiendo 2GB total
+            let ram_color = self.get_color_for_percent(ram_percent, 70.0, 90.0);
+            
+            ui.add(ProgressBar::new(ram_percent / 100.0)
+                .desired_width(100.0)
+                .fill(ram_color));
+            ui.label(format!("{:.0}MB", metrics.ram_mb));
+        });
+        
+        ui.horizontal(|ui| {
+            ui.label("⚙️ CPU:");
+            let cpu_color = self.get_color_for_percent(metrics.cpu_percent, 70.0, 90.0);
+            
+            ui.add(ProgressBar::new(metrics.cpu_percent / 100.0)
+                .desired_width(100.0)
+                .fill(cpu_color));
+            ui.label(format!("{:.1}%", metrics.cpu_percent));
+        });
+        
+        ui.horizontal(|ui| {
+            ui.label("🎮 GPU:");
+            let gpu_color = self.get_color_for_percent(metrics.gpu_percent, 70.0, 90.0);
+            
+            ui.add(ProgressBar::new(metrics.gpu_percent / 100.0)
+                .desired_width(100.0)
+                .fill(gpu_color));
+            ui.label(format!("{:.1}%", metrics.gpu_percent));
+        });
+        
+        ui.horizontal(|ui| {
+            ui.label("🎯 FPS:");
+            let fps_color = match metrics.fps {
+                fps if fps >= 58 => Color32::GREEN,
+                fps if fps >= 30 => Color32::YELLOW,
+                _ => Color32::RED,
+            };
+            
+            ui.colored_label(fps_color, format!("{}", metrics.fps));
+            ui.label(format!("({:.1} ms)", metrics.frame_time_ms));
+        });
+        
+        ui.horizontal(|ui| {
+            ui.label("📊 DC:");
+            ui.label(format!("{}", metrics.draw_calls));
+            
+            ui.label("  🔺 P:");
+            ui.label(format!("{:.1}k", metrics.polygons as f32 / 1000.0));
+        });
+        
+        ui.separator();
+        
+        // Sugerencias de optimización
+        if metrics.draw_calls > 200 {
+            ui.colored_label(Color32::YELLOW, 
+                "💡 Muchas draw calls. Usa instancing.");
+        }
+        
+        if metrics.polygons > 50000 && renderer.get_backend_type() == BackendType::Raylib {
+            ui.colored_label(Color32::YELLOW, 
+                "💡 50k+ polígonos en modo Dinámico. Cambia a Bestia.");
+        }
+    }
+    
+    fn draw_bottom_panel(&mut self, ui: &mut Ui, core: &mut EditorCore) {
+        // Pestañas
+        ui.horizontal(|ui| {
+            ui.selectable_value(&mut self.state.bottom_tab, BottomTab::Animation, "🎬 Animación");
+            ui.selectable_value(&mut self.state.bottom_tab, BottomTab::Tilemap, "🗺️ Tilemap");
+            ui.selectable_value(&mut self.state.bottom_tab, BottomTab::Debug, "🐞 Debug");
+            ui.selectable_value(&mut self.state.bottom_tab, BottomTab::Output, "📋 Salida");
+        });
+        
+        ui.separator();
+        
+        // Contenido según pestaña
+        match self.state.bottom_tab {
+            BottomTab::Animation => self.draw_animation_tab(ui, core),
+            BottomTab::Tilemap => self.draw_tilemap_tab(ui, core),
+            BottomTab::Debug => self.draw_debug_tab(ui, core),
+            BottomTab::Output => self.draw_output_tab(ui, core),
+        }
+    }
+    
+    fn get_color_for_percent(&self, percent: f32, warning: f32, critical: f32) -> Color32 {
+        if percent >= critical {
+            Color32::RED
+        } else if percent >= warning {
+            Color32::YELLOW
+        } else {
+            Color32::GREEN
+        }
+    }
+}
+```
+
+---
+
+2. VIEWPORT CENTRAL CON BOTÓN TV
+
+2.1 Integración Viewport + egui
+
+```rust
+// ui/viewport.rs
+use egui::{self, *};
+use crate::render::RenderBackend;
+use crate::core::{EditorCore, ViewportMode};
+
+pub struct ViewportWidget {
+    pub rect: Rect,
+    pub texture_id: Option<TextureHandle>,
+    pub last_mouse_pos: Option<Pos2>,
+}
+
+impl ViewportWidget {
+    pub fn new() -> Self {
+        ViewportWidget {
+            rect: Rect::NOTHING,
+            texture_id: None,
+            last_mouse_pos: None,
+        }
+    }
+    
+    pub fn ui(&mut self, ui: &mut Ui, core: &mut EditorCore) -> Response {
+        let (rect, response) = ui.allocate_exact_size(
+            ui.available_size(),
+            Sense::click_and_drag(),
+        );
+        
+        self.rect = rect;
+        
+        if ui.is_rect_visible(rect) {
+            // Obtener textura del renderizador
+            if let Some(texture) = core.renderer.get_viewport_texture() {
+                self.texture_id = Some(ui.ctx().load_texture(
+                    "viewport",
+                    texture,
+                    TextureOptions::LINEAR,
+                ));
+            }
+            
+            // Dibujar viewport
+            if let Some(texture_id) = &self.texture_id {
+                ui.painter().image(
+                    texture_id.id(),
+                    rect,
+                    Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                    Color32::WHITE,
+                );
+            } else {
+                // Fallback: mostrar color sólido
+                ui.painter().rect_filled(rect, 0.0, Color32::DARK_GRAY);
+                ui.painter().text(
+                    rect.center(),
+                    Align2::CENTER_CENTER,
+                    "Viewport",
+                    FontId::monospace(14.0),
+                    Color32::GRAY,
+                );
+            }
+            
+            // Superponer barra de herramientas (Botón TV)
+            self.draw_toolbar(ui, core);
+            
+            // Superponer gizmos si estamos en modo edición
+            if core.mode == EditorMode::Edit {
+                self.draw_gizmos(ui, core);
+            }
+        }
+        
+        // Manejar input (clic en viewport)
+        if response.clicked() {
+            if let Some(pos) = response.hover_pos() {
+                let viewport_pos = pos - rect.min;
+                core.on_viewport_click(viewport_pos);
+            }
+        }
+        
+        response
+    }
+    
+    fn draw_toolbar(&self, ui: &Ui, core: &EditorCore) {
+        let painter = ui.painter();
+        
+        // Barra semitransparente en la parte superior
+        let toolbar_rect = Rect::from_min_size(
+            self.rect.min,
+            vec2(self.rect.width(), 40.0),
+        );
+        
+        painter.rect_filled(
+            toolbar_rect,
+            0.0,
+            Color32::from_black_alpha(180),
+        );
+        
+        // Botones de modo (2D, 3D, Script, Jugar)
+        let button_size = vec2(60.0, 30.0);
+        let start_x = self.rect.min.x + 10.0;
+        
+        let modes = [
+            ("2D", ViewportMode::Mode2D),
+            ("3D", ViewportMode::Mode3D),
+            ("📄", ViewportMode::Script),
+            ("▶", ViewportMode::Game),
+        ];
+        
+        for (i, (label, mode)) in modes.iter().enumerate() {
+            let button_rect = Rect::from_min_size(
+                pos2(start_x + i as f32 * 70.0, self.rect.min.y + 5.0),
+                button_size,
+            );
+            
+            let is_selected = core.viewport_mode == *mode;
+            let color = if is_selected {
+                Color32::from_rgb(100, 200, 255)
+            } else {
+                Color32::GRAY
+            };
+            
+            painter.rect_filled(button_rect, 4.0, color);
+            painter.text(
+                button_rect.center(),
+                Align2::CENTER_CENTER,
+                *label,
+                FontId::proportional(14.0),
+                Color32::BLACK,
+            );
+            
+            // Detectar clic (simplificado)
+            // En implementación real, usar interaction de egui
+        }
+        
+        // Indicador de modo de renderizado
+        let render_text = match core.renderer.get_backend_type() {
+            BackendType::Wgpu => "⚡ BESTIA",
+            BackendType::Raylib => "📱 DINÁMICO",
+        };
+        
+        painter.text(
+            pos2(self.rect.right() - 100.0, self.rect.min.y + 20.0),
+            Align2::RIGHT_CENTER,
+            render_text,
+            FontId::proportional(12.0),
+            Color32::WHITE,
+        );
+    }
+    
+    fn draw_gizmos(&self, ui: &Ui, core: &EditorCore) {
+        // Dibujar gizmos de transformación para nodos seleccionados
+        if let Some(selected) = core.get_selected_node() {
+            // Aquí se dibujarían las flechas de transformación
+            // Usando painter de egui para overlays 2D
+        }
+    }
+}
+```
+
+2.2 Integración en UI Principal
+
+```rust
+// En ui/mod.rs, función draw_viewport
+fn draw_viewport(&mut self, ui: &mut Ui, core: &mut EditorCore) {
+    // El viewport Ocupa TODO el espacio disponible
+    let response = self.viewport_widget.ui(ui, core);
+    
+    // Manejar atajos de teclado
+    if ui.input_mut().consume_key(Modifiers::NONE, Key::Space) {
+        core.toggle_play_mode();
+    }
+}
+```
+
+---
+
+3. SISTEMA DE ANIMACIÓN EN-VIEWPORT
+
+3.1 Timeline Minimalista en Panel Inferior
+
+```rust
+// ui/animation_tab.rs
+pub struct AnimationTab {
+    current_time: f32,
+    is_playing: bool,
+    selected_track: Option<Uuid>,
+    zoom_level: f32,
+    scroll_offset: f32,
+}
+
+impl AnimationTab {
+    pub fn draw(&mut self, ui: &mut Ui, core: &EditorCore) {
+        ui.horizontal(|ui| {
+            if ui.button("⏯").clicked() {
+                self.is_playing = !self.is_playing;
+            }
+            
+            if ui.button("⏹").clicked() {
+                self.current_time = 0.0;
+                self.is_playing = false;
+            }
+            
+            ui.label(format!("{:.2}s", self.current_time));
+            
+            ui.add(DragValue::f32(&mut self.current_time).speed(0.01));
+        });
+        
+        ui.separator();
+        
+        // Timeline
+        let timeline_height = = 100.0;
+        let (timeline_rect, _) = ui.allocate_space(vec2(ui.available_width(), timeline_height));
+        
+        let painter = ui.painter();
+        
+        // Fondo del timeline
+        painter.rect_filled(timeline_rect, 0.0, Color32::from_gray(30));
+        
+        // Línea de tiempo (ticks)
+        let duration = core.get_current_animation_duration().unwrap_or(5.0);
+        let pixels_per_second = timeline_rect.width() / duration * self.zoom_level;
+        
+        for second in 0..=duration as i32 {
+            let x = timeline_rect.min.x + second as f32 * pixels_per_second - self.scroll_offset;
+            
+            if x >= timeline_rect.min.x && x <= timeline_rect.max.x {
+                painter.line_segment(
+                    [pos2(x, timeline_rect.min.y), pos2(x, timeline_rect.max.y)],
+                    Stroke::new(1.0, Color32::from_gray(60)),
+                );
+                
+                painter.text(
+                    pos2(x, timeline_rect.min.y + 5.0),
+                    Align2::LEFT_TOP,
+                    format!("{}s", second),
+                    FontId::monospace(10.0),
+                    Color32::GRAY,
+                );
+            }
+        }
+        
+        // Marcador de tiempo actual
+        let playhead_x = timeline_rect.min.x + self.current_time * pixels_per_second - self.scroll_offset;
+        if playhead_x >= timeline_rect.min.x && playhead_x <= timeline_rect.max.x {
+            painter.line_segment(
+                [pos2(playhead_x, timeline_rect.min.y), pos2(playhead_x, timeline_rect.max.y)],
+                Stroke::new(2.0, Color32::RED),
+            );
+        }
+        
+        // Pistas de animación
+        if let Some(animation) = core.get_current_animation() {
+            for (i, track) in animation.tracks.iter().enumerate() {
+                let track_y = timeline_rect.min.y + 30.0 + i as f32 * 20.0;
+                
+                painter.text(
+                    pos2(timeline_rect.min.x + 5.0, track_y),
+                    Align2::LEFT_CENTER,
+                    &track.name,
+                    FontId::monospace(12.0),
+                    Color32::WHITE,
+                );
+                
+                // Dibujar keyframes
+                for keyframe in &track.keyframes {
+                    let kf_x = timeline_rect.min.x + keyframe.time * pixels_per_second - self.scroll_offset;
+                    
+                    if kf_x >= timeline_rect.min.x && kf_x <= timeline_rect.max.x {
+                        painter.circle_filled(
+                            pos2(kf_x, track_y),
+                            4.0,
+                            Color32::YELLOW,
+                        );
+                    }
+                }
+            }
+        }
+        
+        ui.horizontal(|ui| {
+            ui.label("Zoom:");
+            ui.add(Slider::new(&mut self.zoom_level, 0.5..=5.0));
+            
+            if ui.button("⟲ Ajustar").clicked() {
+                self.zoom_level = 1.0;
+                self.scroll_offset = 0.0;
+            }
+        });
+    }
+}
+```
+
+3.2 Handles de Keyframes en Viewport 3D
+
+```rust
+// animation/keyframe_handle.rs
+use glam::Vec3;
+use crate::render::RenderBackend;
+
+pub struct KeyframeHandle {
+    pub id: Uuid,
+    pub position: Vec3,
+    pub time: f32,
+    pub track_id: Uuid,
+    pub selected: bool,
+    pub color: Color,
+}
+
+pub struct KeyframeHandleSystem {
+    handles: Vec<KeyframeHandle>,
+    selected_handle: Option<Uuid>,
+    drag_state: Option<DragState>,
+}
+
+struct DragState {
+    handle_id: Uuid,
+    start_pos: Vec3,
+    start_screen: egui::Pos2,
+}
+
+impl KeyframeHandleSystem {
+    pub fn new() -> Self {
+        KeyframeHandleSystem {
+            handles: Vec::new(),
+            selected_handle: None,
+            drag_state: None,
+        }
+    }
+    
+    pub fn update_from_animation(&mut self, animation: &Animation, scene: &Scene) {
+        self.handles.clear();
+        
+        for track in &animation.tracks {
+            for keyframe in &track.keyframes {
+                // Calcular posición mundial del keyframe
+                if let Some(node) = scene.find_node(track.node_id) {
+                    let world_pos = node.get_world_transform() * keyframe.position;
+                    
+                    self.handles.push(KeyframeHandle {
+                        id: keyframe.id,
+                        position: world_pos,
+                        time: keyframe.time,
+                        track_id: track.id,
+                        selected: false,
+                        color: Color::YELLOW,
+                    });
+                }
+            }
+        }
+    }
+    
+    pub fn draw_overlay(&mut self, ui: &egui::Ui, renderer: &dyn RenderBackend, camera: &Camera) {
+        let painter = ui.painter();
+        
+        for handle in &mut self.handles {
+            // Proyectar posición 3D a 2D
+            if let Some(screen_pos) = camera.world_to_screen(handle.position, ui.ctx().screen_rect()) {
+                // Tamaño variable según distancia
+                let distance = camera.position.distance(handle.position);
+                let size = (100.0 / distance).clamp(5.0, 15.0);
+                
+                // Color según estado
+                let color = if handle.selected {
+                    Color32::RED
+                } else {
+                    Color32::YELLOW
+                };
+                
+                // Dibujar handle
+                painter.circle_filled(screen_pos, size, color);
+                painter.circle_stroke(screen_pos, size + 2.0, Stroke::new(1.0, Color32::WHITE));
+                
+                // Detectar clic
+                let handle_rect = Rect::from_center_size(screen_pos, vec2(size * 2.0, size * 2.0));
+                
+                if ui.rect_contains(handle_rect) && ui.input().pointer.primary_clicked() {
+                    self.selected_handle = Some(handle.id);
+                    handle.selected = true;
+                }
+            }
+        }
+        
+        // Manejar arrastre de handles seleccionados
+        if let Some(handle_id) = self.selected_handle {
+            if let Some(handle) = self.handles.iter_mut().find(|h| h.id == handle_id) {
+                // Lógica de arrastre (simplificada)
+            }
+        }
+    }
+}
+```
+
+---
+4. SISTEMA DE TILEMAP CON EDICIÓN DIRECTA
+
+4.1 Tilemap en Viewport
+
+```rust
+// tilemap/tilemap_editor.rs
+pub struct TilemapEditor {
+    current_tileset: Option<Tileset>,
+    selected_tile: Option<u32>,
+    brush_size: u32,
+    grid_visible: bool,
+    collision_visible: bool,
+}
+
+impl TilemapEditor {
+    pub fn draw_in_viewport(&mut self, ui: &egui::Ui, viewport_rect: Rect, camera: &Camera) {
+        let painter = ui.painter();
+        
+        // Dibujar grid si está activado
+        if self.grid_visible {
+            self.draw_grid(painter, viewport_rect, camera);
+        }
+        
+        // Dibujar colisiones si están activadas
+        if self.collision_visible {
+            self.draw_collisions(painter, viewport_rect, camera);
+        }
+        
+        // Detectar clics para pintar tiles
+        if let Some(mouse_pos) = ui.input().pointer.hover_pos() {
+            if viewport_rect.contains(mouse_pos) && ui.input().pointer.primary_down() {
+                if let Some(world_pos) = camera.screen_to_world(mouse_pos - viewport_rect.min) {
+                    self.paint_tile(world_pos);
+                }
+            }
+        }
+    }
+    
+    fn draw_grid(&self, painter: &egui::Painter, viewport_rect: Rect, camera: &Camera) {
+        // Dibujar grid 2D en el viewport
+        let cell_size = 32.0; // Tamaño de celda en píxeles del mundo
+        
+        // Calcular límites visibles
+        let top_left = camera.screen_to_world(viewport_rect.min - viewport_rect.min);
+        let bottom_right = camera.screen_to_world(viewport_rect.max - viewport_rect.min);
+        
+        let start_x = (top_left.x / cell_size).floor() as i32;
+        let end_x = (bottom_right.x / cell_size).ceil() as i32;
+        let start_y = (top_left.y / cell_size).floor() as i32;
+        let end_y = (bottom_right.y / cell_size).ceil() as i32;
+        
+        for x in start_x..=end_x {
+            let world_x = x as f32 * cell_size;
+            let screen_start = camera.world_to_screen(vec3(world_x, top_left.y, 0.0)).unwrap_or_default();
+            let screen_end = camera.world_to_screen(vec3(world_x, bottom_right.y, 0.0)).unwrap_or_default();
+            
+            painter.line_segment(
+                [viewport_rect.min + screen_start, viewport_rect.min + screen_end],
+                Stroke::new(1.0, Color32::from_gray(60)),
+            );
+        }
+        
+        for y in start_y..=end_y {
+            let world_y = y as f32 * cell_size;
+            let screen_start = camera.world_to_screen(vec3(top_left.x, world_y, 0.0)).unwrap_or_default();
+            let screen_end = camera.world_to_screen(vec3(bottom_right.x, world_y, 0.0)).unwrap_or_default();
+            
+            painter.line_segment(
+                [viewport_rect.min + screen_start, viewport_rect.min + screen_end],
+                Stroke::new(1.0, Color32::from_gray(60)),
+            );
+        }
+    }
+    
+    fn draw_collisions(&self, painter: &egui::Painter, viewport_rect: Rect, camera: &Camera) {
+        // Dibujar áreas de colisión de los tiles
+        // Con handles para estirar/contraer
+    }
+}
+```
+
+---
+
+5. PERSISTENCIA DE LAYOUT
+
+5.1 Guardar y Cargar Estado de UI
+
+```rust
+// ui/persistence.rs
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize)]
+struct UILayout {
+    left_panel_width: f32,
+    right_panel_width: f32,
+    bottom_panel_height: f32,
+    metrics_panel_expanded: bool,
+    bottom_tab: String,
+    render_mode: String,
+}
+
+impl EditorUI {
+    pub fn save_layout_to_file(&self, path: &Path) -> Result<()> {
+        let layout = UILayout {
+            left_panel_width: self.state.left_panel.width,
+            right_panel_width: self.state.right_panel.width,
+            bottom_panel_height: self.state.bottom_panel.height,
+            metrics_panel_expanded: self.state.metrics_panel.expanded,
+            bottom_tab: format!("{:?}", self.state.bottom_tab),
+            render_mode: format!("{:?}", self.state.render_mode),
+        };
+        
+        let json = serde_json::to_string_pretty(&layout)?;
+        std::fs::write(path, json)?;
+        
+        Ok(())
+    }
+    
+    pub fn load_layout_from_file(&mut self, path: &Path) -> Result<()> {
+        let json = std::fs::read_to_string(path)?;
+        let layout: UILayout = serde_json::from_str(&json)?;
+        
+        self.state.left_panel.width = layout.left_panel_width;
+        self.state.right_panel.width = layout.right_panel_width;
+        self.state.bottom_panel.height = layout.bottom_panel_height;
+        self.state.metrics_panel.expanded = layout.metrics_panel_expanded;
+        
+        // Restaurar otros estados...
+        
+        Ok(())
+    }
+}
+```
+
+---
+
+📋 RESUMEN PARTE 2/5
+
+Hemos implementado:
+
+1. Estructura completa de UI con paneles estilo Discord
+2. Viewport central no cerrable con botón TV integrado
+3. Panel de métricas debajo del inspector con visualización en tiempo real
+4. Sistema de animación con timeline y handles 3D
+5. Editor de tilemap con grid y edición directa
+6. Persistencia de layout para recordar referencias

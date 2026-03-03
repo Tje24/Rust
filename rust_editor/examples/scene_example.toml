@@ -1,0 +1,91 @@
+# Escena de ejemplo para Rust Editor
+# Copia este archivo como base para tus escenas
+
+[metadata]
+name = "Mi Primera Escena"
+author = "Developer"
+version = "1.0.0"
+created = "2024-01-01"
+last_modified = "2024-01-01"
+description = "Primera escena de prueba"
+
+[settings]
+viewport_mode = "3D"
+grid_enabled = true
+snap_to_grid = 0.5
+
+[camera]
+position = [5.0, 5.0, 5.0]
+target = [0.0, 0.0, 0.0]
+up = [0.0, 1.0, 0.0]
+fov = 60.0
+near = 0.1
+far = 1000.0
+
+[assets]
+meshes = [
+    { id = "player", path = "assets/player.glb", scale = 1.0 },
+    { id = "ground", path = "assets/plane.glb", scale = 10.0 }
+]
+
+textures = [
+    { id = "player_skin", path = "assets/player.png" },
+    { id = "ground_tex", path = "assets/ground.png" }
+]
+
+# Nodos de la escena
+[[nodes]]
+id = "550e8400-e29b-41d4-a716-446655440001"
+name = "Player"
+parent = null
+tags = ["player", "controllable"]
+visible = true
+enabled = true
+
+[[nodes.components]]
+type = "Transform"
+data = { position = [0.0, 0.0, 0.0], rotation = [0.0, 0.0, 0.0, 1.0], scale = [1.0, 1.0, 1.0] }
+
+[[nodes.components]]
+type = "Mesh"
+data = { mesh_id = "player" }
+
+[[nodes.components]]
+type = "Behavior"
+data = { behavior_id = "oscillate", enabled = true, properties = { axis = "y", speed = 2.0, amplitude = 0.5 } }
+
+[[nodes]]
+id = "550e8400-e29b-41d4-a716-446655440002"
+name = "Ground"
+parent = null
+tags = ["environment"]
+visible = true
+enabled = true
+
+[[nodes.components]]
+type = "Transform"
+data = { position = [0.0, -1.0, 0.0], rotation = [0.0, 0.0, 0.0, 1.0], scale = [10.0, 1.0, 10.0] }
+
+[[nodes.components]]
+type = "Mesh"
+data = { mesh_id = "ground" }
+
+[[nodes]]
+id = "550e8400-e29b-41d4-a716-446655440003"
+name = "Enemy"
+parent = null
+tags = ["enemy", "ai"]
+visible = true
+enabled = true
+
+[[nodes.components]]
+type = "Transform"
+data = { position = [5.0, 0.0, 5.0], rotation = [0.0, 0.0, 0.0, 1.0], scale = [1.0, 1.0, 1.0] }
+
+[[nodes.components]]
+type = "Behavior"
+data = { behavior_id = "patrol", enabled = true, properties = { speed = 2.0, wait_time = 1.0, waypoints = [[5.0, 0.0, 5.0], [-5.0, 0.0, 5.0], [-5.0, 0.0, -5.0], [5.0, 0.0, -5.0]] } }
+
+[physics]
+gravity = [0.0, -9.8, 0.0]
+physics_rate = 60

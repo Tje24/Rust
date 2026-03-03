@@ -1,0 +1,35 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# Build
+*.apk
+*.aab
+*.keystore
+**/build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Android
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# Generated
+/generated/
+
+# Test
+/test_output/
+coverage/

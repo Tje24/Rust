@@ -1,0 +1,417 @@
+================================================================================
+                    RUST EDITOR - GUÍA DE COMPILACIÓN
+                    Build Guide para Android APK
+================================================================================
+
+================================================================================
+1. DEPENDENCIAS REQUERIDAS
+================================================================================
+
+A) RUST Y HERRAMIENTAS BÁSICAS
+--------------------------------
+• Rust 1.75 o superior
+• Cargo (viene con Rust)
+• rustup (gestor de Rust)
+
+Instalar Rust:
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+Verificar instalación:
+  rustc --version
+  cargo --version
+
+
+B) ANDROID SDK
+--------------------------------
+• Android SDK Platform-tools
+• Android SDK Build-tools (versión 34.0.0 o superior)
+• Android SDK Platform (API 33 o superior)
+• Android NDK (versión 25 o superior)
+
+Descargar Android Studio desde:
+  https://developer.android.com/studio
+
+O instalar SDK por separado:
+  https://developer.android.com/studio#command-tools
+
+
+C) TARGETS DE COMPILACIÓN CRUZADA
+--------------------------------
+• aarch64-linux-android (ARM64 - dispositivos modernos)
+• armv7-linux-androideabi (ARMv7 - dispositivos 2GB RAM)
+
+Instalar con rustup:
+  rustup target add aarch64-linux-android
+  rustup target add armv7-linux-androideabi
+
+
+D) HERRAMIENTAS DE BUILD ANDROID
+--------------------------------
+• zipalign (optimización de APK)
+• apksigner (firma de APK)
+• aapt2 (empaquetado de recursos Android)
+
+Estas vienen con Android SDK Build-tools.
+
+
+E) DEPENDENCIAS DE RUST (Cargo.toml)
+--------------------------------
+Las siguientes se descargan automáticamente con 'cargo build':
+
+UI:
+  • egui = "0.26"
+  • eframe = "0.26"
+  • egui_extras = "0.26"
+
+Renderizado:
+  • raylib = "4.5" (con feature "no_glfw")
+  • wgpu = "0.19" (opcional, feature "wgpu_backend")
+  • egui-wgpu = "0.26" (opcional)
+
+Matemáticas:
+  • glam = "0.25"
+
+Serialización:
+  • serde = "1.0" (con feature "derive")
+  • serde_json = "1.0"
+  • toml = "0.8"
+  • ron = "0.8"
+
+Logging:
+  • log = "0.4"
+  • env_logger = "0.10"
+  • android_logger = "0.13"
+
+Errores:
+  • anyhow = "1.0"
+  • thiserror = "1.0"
+
+Utilidades:
+  • uuid = "1.6" (con features "v4", "serde")
+  • once_cell = "1.19"
+  • parking_lot = "0.12"
+  • image = "0.24"
+
+Android:
+  • ndk = "0.8"
+  • ndk-context = "0.1"
+  • ndk-glue = "0.8"
+  • android-activity = "0.5"
+
+
+================================================================================
+2. VARIABLES DE ENTORNO
+================================================================================
+
+Exportar las siguientes variables (añadir a ~/.bashrc o ~/.zshrc):
+
+# Android SDK
+export ANDROID_HOME=$HOME/Android/Sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+export PATH=$PATH:$ANDROID_HOME/build-tools/34.0.0
+
+# Android NDK
+export ANDROID_NDK_HOME=$ANDROID_HOME/ndk
+export PATH=$PATH:$ANDROID_NDK_HOME
+
+# Para Termux (Android)
+export ANDROID_HOME=$HOME/android-sdk
+export ANDROID_NDK_HOME=$HOME/android-ndk
+
+
+Verificar que están configuradas:
+  echo $ANDROID_HOME
+  echo $ANDROID_NDK_HOME
+
+
+================================================================================
+3. PASOS DE COMPILACIÓN - FLUJO COMPLETO
+================================================================================
+
+  ┌──────────────┐
+  │ 1. SETUP     │ ──────► Instalar Rust, SDK, NDK
+  └──────┬───────┘
+         ▼
+  ┌──────────────┐
+  │ 2. CONFIG    │ ──────► Exportar variables de entorno
+  └──────┬───────┘
+         ▼
+  ┌──────────────┐
+  │ 3. TARGETS   │ ──────► Añadir targets con rustup
+  └──────┬───────┘
+         ▼
+  ┌──────────────┐
+  │ 4. DOWNLOAD  │ ──────► cargo fetch (descargar dependencias)
+  └──────┬───────┘
+         ▼
+  ┌──────────────┐
+  │ 5. BUILD     │ ──────► cargo build --release --target <arch>
+  └──────┬───────┘
+         ▼
+  ┌──────────────┐
+  │ 6. PACKAGE   │ ──────► Crear estructura de APK
+  └──────┬───────┘
+         ▼
+  ┌──────────────┐
+  │ 7. SIGN      │ ──────► Firmar APK con apksigner
+  └──────┬───────┘
+         ▼
+  ┌──────────────┐
+  │ 8. INSTALL   │ ──────► adb install <apk>
+  └──────────────┘
+
+
+================================================================================
+4. COMANDOS PASO A PASO
+================================================================================
+
+PASO 1: CLONAR/COPIAR PROYECTO
+--------------------------------
+  cd /data/data/com.termux/files/home/editor_app/rust_editor
+
+
+PASO 2: AÑADIR TARGETS DE COMPILACIÓN
+--------------------------------
+  rustup target add aarch64-linux-android
+  rustup target add armv7-linux-androideabi
+
+
+PASO 3: DESCARGAR DEPENDENCIAS
+--------------------------------
+  cargo fetch
+
+  Esto descargará todas las dependencias de Cargo.toml.
+  Primera vez puede tardar varios minutos.
+
+
+PASO 4: COMPILAR PARA ANDROID
+--------------------------------
+  # Para ARM64 (dispositivos modernos)
+  cargo build --release --target aarch64-linux-android
+
+  # Para ARMv7 (dispositivos 2GB RAM)
+  cargo build --release --target armv7-linux-androideabi
+
+  # Build completo para ambas arquitecturas
+  ./build_android.sh
+
+
+PASO 5: VERIFICAR LIBRERÍAS COMPILADAS
+--------------------------------
+  ls -lh target/aarch64-linux-android/release/librust_editor.so
+  ls -lh target/armv7-linux-androideabi/release/librust_editor.so
+
+
+PASO 6: CREAR APK (AUTOMÁTICO CON SCRIPT)
+--------------------------------
+  chmod +x build_android.sh
+  ./build_android.sh
+
+  El script hace:
+  1. Compila para ARM64 y ARMv7
+  2. Crea estructura de APK
+  3. Copia librerías .so
+  4. Empaqueta con aapt2/zip
+  5. Optimiza con zipalign
+  6. Firma con debug key
+
+
+PASO 7: INSTALAR EN DISPOSITIVO
+--------------------------------
+  # Conectar dispositivo vía USB o usar emulador
+  adb devices
+
+  # Instalar APK
+  adb install target/android-build/rust-editor-debug.apk
+
+  # Si ya está instalado, reinstalar:
+  adb install -r target/android-build/rust-editor-debug.apk
+
+
+PASO 8: VER LOGS
+--------------------------------
+  adb logcat | grep rust_editor
+
+
+================================================================================
+5. COMPILACIÓN PARA DESKTOP (DESARROLLO)
+================================================================================
+
+Para desarrollo y pruebas rápidas en PC:
+
+  # Ejecutar en desktop
+  cargo run --bin editor_desktop
+
+  # Build de release para desktop
+  cargo build --release --bin editor_desktop
+
+  El binario se genera en:
+  target/release/editor_desktop
+
+
+================================================================================
+6. SOLUCIÓN DE PROBLEMAS COMUNES
+================================================================================
+
+ERROR: "ANDROID_HOME no está definido"
+----------------------------------------
+  export ANDROID_HOME=$HOME/Android/Sdk
+  export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+
+ERROR: "target not found"
+----------------------------------------
+  rustup target add <target-name>
+  
+  Ejemplo:
+  rustup target add aarch64-linux-android
+
+
+ERROR: "linker `arm-linux-androideabi-ld` not found"
+----------------------------------------
+  Necesitas instalar el NDK y configurar:
+  export ANDROID_NDK_HOME=$ANDROID_HOME/ndk
+  
+  O usar cargo-ndk:
+  cargo install cargo-ndk
+  cargo ndk build --target aarch64-linux-android
+
+
+ERROR: "apksigner not found"
+----------------------------------------
+  Asegúrate de tener build-tools instalado:
+  $ANDROID_HOME/build-tools/34.0.0/apksigner
+  
+  Añade a PATH:
+  export PATH=$PATH:$ANDROID_HOME/build-tools/34.0.0
+
+
+ERROR: Dependencias no se descargan
+----------------------------------------
+  Limpiar cache y reintentar:
+  cargo clean
+  cargo fetch --locked
+
+
+ERROR: Build falla en raylib
+----------------------------------------
+  raylib requiere dependencias del sistema:
+  
+  En Linux:
+  sudo apt-get install libraylib-dev
+  
+  En Termux:
+  pkg install raylib
+
+
+================================================================================
+7. TIEMPOS ESTIMADOS DE COMPILACIÓN
+================================================================================
+
+Primera compilación (descarga de dependencias):
+  • Download: 5-15 minutos (depende de internet)
+  • Build: 10-30 minutos (depende de hardware)
+
+Compilaciones posteriores (incrementales):
+  • Build: 2-5 minutos
+
+Build de release limpio:
+  • cargo clean + build: 10-20 minutos
+
+
+================================================================================
+8. TAMAÑOS ESPERADOS
+================================================================================
+
+Dependencias descargadas (cargo cache):
+  • ~500 MB - 1 GB
+
+Carpeta target después de build:
+  • ~2-5 GB
+
+APK final:
+  • Debug: ~15-25 MB
+  • Release: ~8-15 MB (con strip y optimizaciones)
+
+
+================================================================================
+9. COMANDOS ÚTILES
+================================================================================
+
+# Ver dependencias
+cargo tree
+
+# Ver información del proyecto
+cargo metadata
+
+# Limpiar build
+cargo clean
+
+# Check sin compilar (rápido)
+cargo check
+
+# Build con timing
+cargo build --timings
+
+# Ver logs de build
+RUST_LOG=debug cargo build
+
+# Build verbose
+cargo build -vv
+
+
+================================================================================
+10. ARQUITECTURAS SOPORTADAS
+================================================================================
+
+┌──────────────────┬─────────────────────────────┬─────────────────────────┐
+│ Arquitectura     │ Target Rust                 │ Dispositivos            │
+├──────────────────┼─────────────────────────────┼─────────────────────────┤
+│ arm64-v8a        │ aarch64-linux-android       │ 95% dispositivos 2015+  │
+│ armeabi-v7a      │ armv7-linux-androideabi     │ 2GB RAM, Redmi, etc.    │
+│ x86_64           │ x86_64-linux-android        │ Emuladores, tablets     │
+└──────────────────┴─────────────────────────────┴─────────────────────────┘
+
+Recomendado: Compilar para ARM64 + ARMv7 para máxima cobertura.
+
+
+================================================================================
+11. CHECKLIST PRE-BUILD
+================================================================================
+
+Antes de compilar, verificar:
+
+[ ] Rust instalado (rustc --version)
+[ ] ANDROID_HOME configurado
+[ ] ANDROID_NDK_HOME configurado
+[ ] Targets añadidos (rustup target list)
+[ ] adb funciona (adb devices)
+[ ] Espacio en disco suficiente (>5 GB)
+[ ] Conexión a internet (primera vez)
+
+
+================================================================================
+12. RECURSOS ADICIONALES
+================================================================================
+
+Documentación oficial:
+  • Rust: https://doc.rust-lang.org/
+  • Cargo: https://doc.rust-lang.org/cargo/
+  • Android NDK: https://developer.android.com/ndk
+
+Comunidades:
+  • Rust en Android: https://github.com/rust-windowing/android-rs-glue
+  • egui: https://github.com/emilk/egui
+  • raylib: https://github.com/raysan5/raylib
+
+Proyectos de referencia:
+  • https://github.com/rust-mobile
+  • https://github.com/tauri-apps/tauri
+
+
+================================================================================
+                    FIN DE LA GUÍA DE COMPILACIÓN
+================================================================================
+
+Última actualización: 2024
+Versión del proyecto: 0.1.0
