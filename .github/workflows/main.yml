@@ -1,0 +1,67 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: "1.75.0"
+  ANDROID_SDK_VERSION: "33"
+  NDK_VERSION: "25.2.9519653"
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: |
+          sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
+
+      - name: Build ARM64
+        run: cargo build --release --target aarch64-linux-android
+
+      - name: Build ARMv7
+        run: cargo build --release --target armv7-linux-androideabi
+
+      - name: Create APK
+        run: |
+          mkdir -p apk-build/lib/arm64-v8a apk-build/lib/armeabi-v7a apk-build/assets
+          cp target/aarch64-linux-android/release/librust_editor.so apk-build/lib/arm64-v8a/
+          cp target/armv7-linux-androideabi/release/librust_editor.so apk-build/lib/armeabi-v7a/
+          cp android/AndroidManifest.xml apk-build/
+          cp -r android/res apk-build/
+          cd apk-build && zip -r ../rust-editor-debug.apk *
+
+      - name: Sign APK
+        run: |
+          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign --ks debug.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out rust-editor-signed.apk rust-editor-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-editor-debug.apk
+          path: rust-editor-signed.apk
+          retention-days: 30
