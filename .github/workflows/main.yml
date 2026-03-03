@@ -48,11 +48,21 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
           echo "NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
 
+      - name: Setup NDK Toolchain
+        run: |
+          export NDK_BIN=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin
+          echo "CC=$NDK_BIN/aarch64-linux-android21-clang" >> $GITHUB_ENV
+          echo "CXX=$NDK_BIN/aarch64-linux-android21-clang++" >> $GITHUB_ENV
+          echo "AR=$NDK_BIN/llvm-ar" >> $GITHUB_ENV
+          echo "PATH=$NDK_BIN:$PATH" >> $GITHUB_ENV
+
       - name: Verify Setup
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
           echo "NDK_HOME=$NDK_HOME"
+          echo "CC=$CC"
+          echo "CXX=$CXX"
           rustc --version
           cargo --version
           ls -la $ANDROID_HOME/build-tools/
