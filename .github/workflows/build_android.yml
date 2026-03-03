@@ -51,18 +51,26 @@ jobs:
       - name: Setup NDK Toolchain
         run: |
           export NDK_BIN=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin
-          echo "CC=$NDK_BIN/aarch64-linux-android21-clang" >> $GITHUB_ENV
-          echo "CXX=$NDK_BIN/aarch64-linux-android21-clang++" >> $GITHUB_ENV
-          echo "AR=$NDK_BIN/llvm-ar" >> $GITHUB_ENV
+          echo "CC_aarch64_linux_android=$NDK_BIN/aarch64-linux-android24-clang" >> $GITHUB_ENV
+          echo "CXX_aarch64_linux_android=$NDK_BIN/aarch64-linux-android24-clang++" >> $GITHUB_ENV
+          echo "AR_aarch64_linux_android=$NDK_BIN/llvm-ar" >> $GITHUB_ENV
+          echo "CC_armv7_linux_androideabi=$NDK_BIN/armv7a-linux-androideabi24-clang" >> $GITHUB_ENV
+          echo "CXX_armv7_linux_androideabi=$NDK_BIN/armv7a-linux-androideabi24-clang++" >> $GITHUB_ENV
+          echo "AR_armv7_linux_androideabi=$NDK_BIN/llvm-ar" >> $GITHUB_ENV
+          echo "CMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}/build/cmake/android.toolchain.cmake" >> $GITHUB_ENV
+          echo "ANDROID_ABI=arm64-v8a" >> $GITHUB_ENV
+          echo "ANDROID_PLATFORM=android-24" >> $GITHUB_ENV
           echo "PATH=$NDK_BIN:$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$NDK_BIN/../lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
       - name: Verify Setup
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
           echo "NDK_HOME=$NDK_HOME"
-          echo "CC=$CC"
-          echo "CXX=$CXX"
+          echo "CC_aarch64_linux_android=$CC_aarch64_linux_android"
+          echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+          echo "ANDROID_ABI=$ANDROID_ABI"
           rustc --version
           cargo --version
           ls -la $ANDROID_HOME/build-tools/
