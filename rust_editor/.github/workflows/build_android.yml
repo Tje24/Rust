@@ -1,143 +1,67 @@
-# GitHub Actions Workflow para compilar Rust Editor para Android
-# Guarda este archivo en: .github/workflows/build_android.yml
-
 name: Build Android APK
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Permitir ejecución manual
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.75.0
-  ANDROID_SDK_VERSION: 33
-  NDK_VERSION: 25.2.9519653
-  PROJECT_NAME: rust_editor
-  APK_VERSION: 0.1.0
+  RUST_VERSION: "1.75.0"
+  ANDROID_SDK_VERSION: "33"
+  NDK_VERSION: "25.2.9519653"
 
 jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-linux-android,armv7-linux-androideabi
 
-      - name: Cache Cargo dependencies
+      - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
-        with:
-          key: android-build
 
-      - name: Set up Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: 9.0
-          api-level: ${{ env.ANDROID_SDK_VERSION }}
-          build-tools-version: 34.0.0
 
-      - name: Install Android NDK
+      - name: Install NDK
         run: |
-          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
+          sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
 
-      - name: Verify tools
-        run: |
-          rustc --version
-          cargo --version
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
-
-      - name: Fetch dependencies
-        run: cargo fetch
-
-      - name: Build for ARM64
+      - name: Build ARM64
         run: cargo build --release --target aarch64-linux-android
 
-      - name: Build for ARMv7
+      - name: Build ARMv7
         run: cargo build --release --target armv7-linux-androideabi
 
-      - name: Create APK structure
+      - name: Create APK
         run: |
-          mkdir -p apk-build/lib/arm64-v8a
-          mkdir -p apk-build/lib/armeabi-v7a
-          mkdir -p apk-build/assets
+          mkdir -p apk-build/lib/arm64-v8a apk-build/lib/armeabi-v7a apk-build/assets
           cp target/aarch64-linux-android/release/librust_editor.so apk-build/lib/arm64-v8a/
           cp target/armv7-linux-androideabi/release/librust_editor.so apk-build/lib/armeabi-v7a/
           cp android/AndroidManifest.xml apk-build/
           cp -r android/res apk-build/
+          cd apk-build && zip -r ../rust-editor-debug.apk *
 
-      - name: Package APK
+      - name: Sign APK
         run: |
-          cd apk-build
-          zip -r ../rust-editor-unsigned.apk *
-          cd ..
-          $ANDROID_HOME/build-tools/34.0.0/zipalign -f -p 4 rust-editor-unsigned.apk rust-editor-aligned.apk
+          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign --ks debug.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out rust-editor-signed.apk rust-editor-debug.apk
 
-      - name: Sign APK (Debug)
-        run: |
-          keytool -genkey -v -keystore debug.keystore \
-            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
-          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
-            --ks debug.keystore \
-            --ks-key-alias androiddebugkey \
-            --ks-pass pass:android \
-            --key-pass pass:android \
-            --out rust-editor-debug.apk \
-            rust-editor-aligned.apk
-          $ANDROID_HOME/build-tools/34.0.0/apksigner verify rust-editor-debug.apk
-
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: rust-editor-${{ env.APK_VERSION }}-debug
-          path: rust-editor-debug.apk
+          name: rust-editor-debug.apk
+          path: rust-editor-signed.apk
           retention-days: 30
-
-      - name: Create Release (if on main)
-        if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ env.APK_VERSION }}-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          draft: false
-          prerelease: true
-          files: rust-editor-debug.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
-
-      - name: Run cargo check
-        run: cargo check --all-targets
-
-      - name: Run cargo fmt
-        run: cargo fmt --all -- --check
-
-      - name: Run cargo clippy
-        run: cargo clippy --all-targets -- -D warnings
