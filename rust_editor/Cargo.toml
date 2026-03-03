@@ -79,7 +79,7 @@ image = "0.24"
 ndk = "0.7"
 ndk-context = "0.1"
 ndk-glue = "0.7"
-android-activity = "0.5"
+android-activity = { version = "0.5", features = ["native-activity"] }
 
 # ============================================
 # Desktop específico (para desarrollo)
