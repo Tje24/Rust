@@ -1,7 +1,6 @@
 // src/lib.rs - Punto de entrada principal para Android
 
 #![cfg_attr(target_os = "android", no_std)]
-#![cfg_attr(target_os = "android", ndk_glue::main)]
 
 pub mod core;
 pub mod render;
@@ -40,14 +39,15 @@ fn init_desktop_logging() {
 /// Punto de entrada principal para Android
 #[cfg(target_os = "android")]
 #[no_mangle]
-pub extern "C" fn android_main(app: &android_activity::AndroidApp) {
+pub extern "C" fn android_main(app: android_activity::AndroidApp) {
     init_android_logging();
-    
+
     log::info!("Iniciando editor...");
-    
+
     // Inicializar el core del editor
     let mut editor = core::EditorApp::new();
-    
+    editor.init_renderer();
+
     // Bucle principal (simplificado por ahora)
     // En implementación real, esto integrará con egui + render backend
     loop {
@@ -55,10 +55,10 @@ pub extern "C" fn android_main(app: &android_activity::AndroidApp) {
         if app.poll_events().is_some() {
             break;
         }
-        
+
         // Actualizar lógica
-        editor.update();
-        
+        editor.update(0.016);
+
         // Renderizar
         editor.render();
     }
@@ -68,6 +68,6 @@ pub extern "C" fn android_main(app: &android_activity::AndroidApp) {
 pub fn create_editor() -> core::EditorApp {
     #[cfg(not(target_os = "android"))]
     init_desktop_logging();
-    
+
     core::EditorApp::new()
 }
