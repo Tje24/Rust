@@ -2,7 +2,7 @@
 
 use super::PerformanceMetrics;
 use crate::scripting::Scene;
-use glam::{Vec3, Vec4};
+use glam::Vec3;
 
 /// Tipo de backend
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

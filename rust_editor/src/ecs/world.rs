@@ -21,7 +21,7 @@ impl EcsWorld {
     pub fn create_entity(&mut self) -> Entity {
         let id = Uuid::new_v4();
         let entity = Entity::new(id);
-        self.entities.insert(id, entity.clone());
+        self.entities.insert(id, Entity::new(id));
         self.next_id += 1;
         entity
     }

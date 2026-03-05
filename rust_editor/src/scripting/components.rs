@@ -1,7 +1,7 @@
 // src/scripting/components.rs - Componentes del ECS
 
 use glam::{Vec3, Quat};
-use crate::scripting::node::{AsComponent, Node};
+use crate::scripting::node::AsComponent;
 
 /// Componentes disponibles
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

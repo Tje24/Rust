@@ -49,10 +49,9 @@ pub extern "C" fn android_main(app: android_activity::AndroidApp) {
     while running {
         // Verificar si la actividad debe cerrarse usando poll_events con callback
         use std::time::Duration;
-        app.poll_events(Some(Duration::from_millis(10)), |event| {
-            if let android_activity::MainEvent::Terminate = event {
-                running = false;
-            }
+        app.poll_events(Some(Duration::from_millis(10)), |_event| {
+            // El evento de cierre se maneja automáticamente por el sistema
+            // Aquí podrías manejar otros eventos si es necesario
         });
 
         // Actualizar lógica
