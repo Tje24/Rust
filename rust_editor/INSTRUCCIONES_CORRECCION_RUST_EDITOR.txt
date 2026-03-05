@@ -1,0 +1,67 @@
+INSTRUCCIONES PARA CORREGIR ERRORES DE COMPILACIÓN EN TU PROYECTO "rust_editor"
+================================================================================
+
+1. ERROR[E0599]: no method named `is_some` found for unit type `()` 
+-------------------------------------------------------------------
+Ubicación (ejemplo): src/lib.rs:51:30
+- PROBLEMA: Estás invocando `.is_some()` sobre el resultado de la función `poll_events()`, pero esta función retorna el tipo `()` (unit), que no tiene ese método.
+- SOLUCIÓN:  
+  a) Asegúrate de que `poll_events()` retorne un tipo `Option<T>`.  
+  b) Si no debe retornar nada, elimina el uso de `.is_some()` y revisa la lógica de esa condición.
+  c) Si sí debe retornar un tipo opcional, edita la función para retornar `Option<...>` correctamente.
+
+-------------------------------------------------------------------
+
+2. ERROR[E0592]: duplicate definitions (definiciones duplicadas)
+---------------------------------------------------------------
+Ubicación (ejemplo): src/ui/editor_ui.rs:44:5 y src/ui/editor_ui.rs:118:5
+- PROBLEMA: Tienes dos funciones con el mismo nombre (`draw_files_panel`, `draw_inspector`) en el mismo módulo o archivo.
+- SOLUCIÓN:  
+  a) Busca todas las definiciones duplicadas de esas funciones y deja solo UNA, o cambia su nombre si necesitas ambas pero cumplen roles diferentes.
+  b) Alternativamente, convierte alguna de las funciones en un método para un struct o usa traits si aplica a tu diseño.
+
+-------------------------------------------------------------------
+
+3. ERROR[E0308]: mismatched types (tipos incompatibles)
+-------------------------------------------------------
+Ubicación (ejemplo): src/core/editor_app.rs:182:46
+- PROBLEMA: Estás pasando una referencia INMUTABLE a una función que espera `&mut` (mutable).
+- SOLUCIÓN:  
+  a) Verifica que el argumento que pasas a la función sea mutable.  
+  b) Si necesitas cambiar de inmutable a mutable, usa `let mut variable...` y pásala como `&mut variable`.
+  c) Asegúrate que la función también acepte la mutabilidad correctamente.
+
+-------------------------------------------------------------------
+
+4. WARNING: unused variables/imports (variables o imports no utilizados)
+-----------------------------------------------------------------------
+- PROBLEMA: Tienes variables o imports que no utilizas.
+- SOLUCIÓN:  
+  a) Si no planeas usarlas, eliminalas directamente.  
+  b) Si una variable sin uso debe quedar, nómbrala como `_nombre` para evitar el warning.
+
+-------------------------------------------------------------------
+
+5. AVISO FINAL: Error: Process completed with exit code 101
+-----------------------------------------------------------
+- Este error solo indica que la compilación falló por las causas anteriores. Se resolverá al corregir los puntos 1 a 4.
+
+-------------------------------------------------------------------
+
+RECOMENDACIONES ADICIONALES:
+============================
+- Haz un commit después de cada cambio importante para identificar rápidamente si otro cambio introduce nuevos errores.
+- Ejecuta `cargo check` y `cargo build` después de cada corrección para verificar el avance.
+- Si ves advertencias o errores nuevos, repite el proceso de identificación y corrección.
+
+-------------------------------------------------------------------
+
+¿CÓMO BUSCAR LOS ERRORES?
+==========================
+- Puedes usar la búsqueda de tu editor de texto favorito para localizar líneas con los nombres de las funciones problemáticas.
+- Lee cuidadosamente el mensaje de error y revisa el archivo/línea exactos que te indica la compilación de Rust.
+
+-------------------------------------------------------------------
+
+¡ÉXITO ARREGLANDO TU PROYECTO! 
+Si te atoras en algún punto o un error no se resuelve, copia aquí el fragmento de código afectado o el mensaje de error y con gusto te ayudaré puntualmente.

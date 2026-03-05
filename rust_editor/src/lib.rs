@@ -42,7 +42,7 @@ pub extern "C" fn android_main(app: android_activity::AndroidApp) {
     editor.init_renderer();
 
     // Flag para controlar el bucle principal
-    let mut running = true;
+    let running = true;
 
     // Bucle principal (simplificado por ahora)
     // En implementación real, esto integrará con egui + render backend

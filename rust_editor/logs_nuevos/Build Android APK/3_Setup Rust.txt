@@ -1,0 +1,236 @@
+﻿2026-03-05T16:06:57.9308987Z ##[group]Run dtolnay/rust-toolchain@nightly
+2026-03-05T16:06:57.9310038Z with:
+2026-03-05T16:06:57.9310970Z   targets: aarch64-linux-android,armv7-linux-androideabi
+2026-03-05T16:06:57.9312170Z   toolchain: nightly
+2026-03-05T16:06:57.9312985Z env:
+2026-03-05T16:06:57.9313953Z   CARGO_TERM_COLOR: always
+2026-03-05T16:06:57.9314788Z   RUST_BACKTRACE: 1
+2026-03-05T16:06:57.9315516Z   RUST_VERSION: nightly
+2026-03-05T16:06:57.9316308Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:06:57.9317121Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:06:57.9317960Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:06:57.9318774Z ##[endgroup]
+2026-03-05T16:06:57.9461068Z ##[group]Run : parse toolchain version
+2026-03-05T16:06:57.9462166Z [36;1m: parse toolchain version[0m
+2026-03-05T16:06:57.9463117Z [36;1mif [[ -z $toolchain ]]; then[0m
+2026-03-05T16:06:57.9465009Z [36;1m  # GitHub does not enforce `required: true` inputs itself. https://github.com/actions/runner/issues/1070[0m
+2026-03-05T16:06:57.9466834Z [36;1m  echo "'toolchain' is a required input" >&2[0m
+2026-03-05T16:06:57.9467892Z [36;1m  exit 1[0m
+2026-03-05T16:06:57.9469007Z [36;1melif [[ $toolchain =~ ^stable' '[0-9]+' '(year|month|week|day)s?' 'ago$ ]]; then[0m
+2026-03-05T16:06:57.9470392Z [36;1m  if [[ Linux == macOS ]]; then[0m
+2026-03-05T16:06:57.9472097Z [36;1m    echo "toolchain=1.$((($(date -v-$(sed 's/stable \([0-9]*\) \(.\).*/\1\2/' <<< $toolchain) +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:06:57.9473911Z [36;1m  else[0m
+2026-03-05T16:06:57.9475247Z [36;1m    echo "toolchain=1.$((($(date --date "${toolchain#stable }" +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:06:57.9476797Z [36;1m  fi[0m
+2026-03-05T16:06:57.9477794Z [36;1melif [[ $toolchain =~ ^stable' 'minus' '[0-9]+' 'releases?$ ]]; then[0m
+2026-03-05T16:06:57.9479548Z [36;1m  echo "toolchain=1.$((($(date +%s)/60/60/24-16569)/7/6-${toolchain//[^0-9]/}))" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:06:57.9481124Z [36;1melif [[ $toolchain =~ ^1\.[0-9]+$ ]]; then[0m
+2026-03-05T16:06:57.9482877Z [36;1m  echo "toolchain=1.$((i=${toolchain#1.}, c=($(date +%s)/60/60/24-16569)/7/6, i+9*i*(10*i<=c)+90*i*(100*i<=c)))" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:06:57.9484893Z [36;1melse[0m
+2026-03-05T16:06:57.9485764Z [36;1m  echo "toolchain=$toolchain" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:06:57.9486794Z [36;1mfi[0m
+2026-03-05T16:06:57.9543563Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:06:57.9544719Z env:
+2026-03-05T16:06:57.9545385Z   CARGO_TERM_COLOR: always
+2026-03-05T16:06:57.9546208Z   RUST_BACKTRACE: 1
+2026-03-05T16:06:57.9546936Z   RUST_VERSION: nightly
+2026-03-05T16:06:57.9547729Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:06:57.9548536Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:06:57.9549384Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:06:57.9550209Z   toolchain: nightly
+2026-03-05T16:06:57.9550955Z ##[endgroup]
+2026-03-05T16:06:57.9743223Z ##[group]Run : construct rustup command line
+2026-03-05T16:06:57.9744561Z [36;1m: construct rustup command line[0m
+2026-03-05T16:06:57.9746049Z [36;1mecho "targets=$(for t in ${targets//,/ }; do echo -n ' --target' $t; done)" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:06:57.9748134Z [36;1mecho "components=$(for c in ${components//,/ }; do echo -n ' --component' $c; done)" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:06:57.9749798Z [36;1mecho "downgrade=" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:06:57.9802111Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:06:57.9803224Z env:
+2026-03-05T16:06:57.9804127Z   CARGO_TERM_COLOR: always
+2026-03-05T16:06:57.9804939Z   RUST_BACKTRACE: 1
+2026-03-05T16:06:57.9805659Z   RUST_VERSION: nightly
+2026-03-05T16:06:57.9806515Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:06:57.9807336Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:06:57.9808170Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:06:57.9809434Z   targets: aarch64-linux-android,armv7-linux-androideabi
+2026-03-05T16:06:57.9810541Z   components: 
+2026-03-05T16:06:57.9811230Z ##[endgroup]
+2026-03-05T16:06:57.9942320Z ##[group]Run : set $CARGO_HOME
+2026-03-05T16:06:57.9943654Z [36;1m: set $CARGO_HOME[0m
+2026-03-05T16:06:57.9944765Z [36;1mecho CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV[0m
+2026-03-05T16:06:57.9995372Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:06:57.9996492Z env:
+2026-03-05T16:06:57.9997157Z   CARGO_TERM_COLOR: always
+2026-03-05T16:06:57.9997971Z   RUST_BACKTRACE: 1
+2026-03-05T16:06:57.9998708Z   RUST_VERSION: nightly
+2026-03-05T16:06:57.9999487Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:06:58.0000300Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:06:58.0001138Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:06:58.0001954Z ##[endgroup]
+2026-03-05T16:06:58.0132248Z ##[group]Run : install rustup if needed
+2026-03-05T16:06:58.0133253Z [36;1m: install rustup if needed[0m
+2026-03-05T16:06:58.0134492Z [36;1mif ! command -v rustup &>/dev/null; then[0m
+2026-03-05T16:06:58.0136896Z [36;1m  curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y[0m
+2026-03-05T16:06:58.0139298Z [36;1m  echo "$CARGO_HOME/bin" >> $GITHUB_PATH[0m
+2026-03-05T16:06:58.0140265Z [36;1mfi[0m
+2026-03-05T16:06:58.0191090Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:06:58.0192206Z env:
+2026-03-05T16:06:58.0192868Z   CARGO_TERM_COLOR: always
+2026-03-05T16:06:58.0193909Z   RUST_BACKTRACE: 1
+2026-03-05T16:06:58.0194647Z   RUST_VERSION: nightly
+2026-03-05T16:06:58.0195427Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:06:58.0196236Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:06:58.0197070Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:06:58.0197930Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:06:58.0198773Z ##[endgroup]
+2026-03-05T16:06:58.0332007Z ##[group]Run rustup toolchain install nightly --target aarch64-linux-android --target armv7-linux-androideabi --profile minimal --no-self-update
+2026-03-05T16:06:58.0335515Z [36;1mrustup toolchain install nightly --target aarch64-linux-android --target armv7-linux-androideabi --profile minimal --no-self-update[0m
+2026-03-05T16:06:58.0387272Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:06:58.0388387Z env:
+2026-03-05T16:06:58.0389048Z   CARGO_TERM_COLOR: always
+2026-03-05T16:06:58.0389855Z   RUST_BACKTRACE: 1
+2026-03-05T16:06:58.0390575Z   RUST_VERSION: nightly
+2026-03-05T16:06:58.0391361Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:06:58.0392163Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:06:58.0392994Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:06:58.0394011Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:06:58.0394903Z   RUSTUP_PERMIT_COPY_RENAME: 1
+2026-03-05T16:06:58.0395721Z ##[endgroup]
+2026-03-05T16:06:58.1960919Z info: syncing channel updates for 'nightly-x86_64-unknown-linux-gnu'
+2026-03-05T16:06:58.4005501Z info: latest update on 2026-03-05, rust version 1.96.0-nightly (b90dc1e59 2026-03-04)
+2026-03-05T16:06:58.4007614Z info: downloading component 'cargo'
+2026-03-05T16:06:58.5183972Z info: downloading component 'rust-std' for 'aarch64-linux-android'
+2026-03-05T16:06:58.6825271Z info: downloading component 'rust-std' for 'armv7-linux-androideabi'
+2026-03-05T16:06:58.8424777Z info: downloading component 'rust-std'
+2026-03-05T16:06:59.0099818Z info: downloading component 'rustc'
+2026-03-05T16:06:59.3872069Z info: installing component 'cargo'
+2026-03-05T16:07:00.0961520Z info: installing component 'rust-std' for 'aarch64-linux-android'
+2026-03-05T16:07:01.7687253Z info: installing component 'rust-std' for 'armv7-linux-androideabi'
+2026-03-05T16:07:03.8180316Z info: installing component 'rust-std'
+2026-03-05T16:07:05.6969525Z info: installing component 'rustc'
+2026-03-05T16:07:10.4165660Z 
+2026-03-05T16:07:10.4262161Z   nightly-x86_64-unknown-linux-gnu installed - rustc 1.96.0-nightly (b90dc1e59 2026-03-04)
+2026-03-05T16:07:10.4262920Z 
+2026-03-05T16:07:10.4315695Z ##[group]Run rustup default nightly
+2026-03-05T16:07:10.4316052Z [36;1mrustup default nightly[0m
+2026-03-05T16:07:10.4366284Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:07:10.4366836Z env:
+2026-03-05T16:07:10.4367037Z   CARGO_TERM_COLOR: always
+2026-03-05T16:07:10.4367271Z   RUST_BACKTRACE: 1
+2026-03-05T16:07:10.4367466Z   RUST_VERSION: nightly
+2026-03-05T16:07:10.4367726Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:07:10.4367942Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:07:10.4368175Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:07:10.4368410Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:07:10.4368673Z ##[endgroup]
+2026-03-05T16:07:10.4494637Z info: using existing install for 'nightly-x86_64-unknown-linux-gnu'
+2026-03-05T16:07:10.4796327Z info: default toolchain set to 'nightly-x86_64-unknown-linux-gnu'
+2026-03-05T16:07:10.4796884Z 
+2026-03-05T16:07:10.4884653Z   nightly-x86_64-unknown-linux-gnu unchanged - rustc 1.96.0-nightly (b90dc1e59 2026-03-04)
+2026-03-05T16:07:10.4885443Z 
+2026-03-05T16:07:10.4932391Z ##[group]Run : create cachekey
+2026-03-05T16:07:10.4932698Z [36;1m: create cachekey[0m
+2026-03-05T16:07:10.4933246Z [36;1mDATE=$(rustc +nightly --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')[0m
+2026-03-05T16:07:10.4934319Z [36;1mHASH=$(rustc +nightly --version --verbose | sed -ne 's/^commit-hash: //p')[0m
+2026-03-05T16:07:10.4934916Z [36;1mecho "cachekey=$(echo $DATE$HASH | head -c12)" >> $GITHUB_OUTPUT[0m
+2026-03-05T16:07:10.4985171Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:07:10.4985530Z env:
+2026-03-05T16:07:10.4985733Z   CARGO_TERM_COLOR: always
+2026-03-05T16:07:10.4985959Z   RUST_BACKTRACE: 1
+2026-03-05T16:07:10.4986191Z   RUST_VERSION: nightly
+2026-03-05T16:07:10.4986424Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:07:10.4986649Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:07:10.4986885Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:07:10.4987128Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:07:10.4987385Z ##[endgroup]
+2026-03-05T16:07:10.5409815Z ##[group]Run : disable incremental compilation
+2026-03-05T16:07:10.5410258Z [36;1m: disable incremental compilation[0m
+2026-03-05T16:07:10.5410634Z [36;1mif [ -z "${CARGO_INCREMENTAL+set}" ]; then[0m
+2026-03-05T16:07:10.5411011Z [36;1m  echo CARGO_INCREMENTAL=0 >> $GITHUB_ENV[0m
+2026-03-05T16:07:10.5411332Z [36;1mfi[0m
+2026-03-05T16:07:10.5462033Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:07:10.5462438Z env:
+2026-03-05T16:07:10.5462643Z   CARGO_TERM_COLOR: always
+2026-03-05T16:07:10.5462906Z   RUST_BACKTRACE: 1
+2026-03-05T16:07:10.5463131Z   RUST_VERSION: nightly
+2026-03-05T16:07:10.5463701Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:07:10.5463976Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:07:10.5464236Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:07:10.5464512Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:07:10.5464783Z ##[endgroup]
+2026-03-05T16:07:10.5576707Z ##[group]Run : enable colors in Cargo output
+2026-03-05T16:07:10.5577256Z [36;1m: enable colors in Cargo output[0m
+2026-03-05T16:07:10.5577710Z [36;1mif [ -z "${CARGO_TERM_COLOR+set}" ]; then[0m
+2026-03-05T16:07:10.5578078Z [36;1m  echo CARGO_TERM_COLOR=always >> $GITHUB_ENV[0m
+2026-03-05T16:07:10.5578359Z [36;1mfi[0m
+2026-03-05T16:07:10.5623885Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:07:10.5624263Z env:
+2026-03-05T16:07:10.5624466Z   CARGO_TERM_COLOR: always
+2026-03-05T16:07:10.5624766Z   RUST_BACKTRACE: 1
+2026-03-05T16:07:10.5624983Z   RUST_VERSION: nightly
+2026-03-05T16:07:10.5625224Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:07:10.5625469Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:07:10.5625716Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:07:10.5625979Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:07:10.5626240Z   CARGO_INCREMENTAL: 0
+2026-03-05T16:07:10.5626468Z ##[endgroup]
+2026-03-05T16:07:10.5717722Z ##[group]Run : enable Cargo sparse registry
+2026-03-05T16:07:10.5718236Z [36;1m: enable Cargo sparse registry[0m
+2026-03-05T16:07:10.5718603Z [36;1m# implemented in 1.66, stabilized in 1.68, made default in 1.70[0m
+2026-03-05T16:07:10.5719456Z [36;1mif [ -z "${CARGO_REGISTRIES_CRATES_IO_PROTOCOL+set}" -o -f "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol ]; then[0m
+2026-03-05T16:07:10.5720215Z [36;1m  if rustc +nightly --version --verbose | grep -q '^release: 1\.6[89]\.'; then[0m
+2026-03-05T16:07:10.5720797Z [36;1m    touch "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-03-05T16:07:10.5721348Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse >> $GITHUB_ENV[0m
+2026-03-05T16:07:10.5721863Z [36;1m  elif rustc +nightly --version --verbose | grep -q '^release: 1\.6[67]\.'; then[0m
+2026-03-05T16:07:10.5722443Z [36;1m    touch "/home/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-03-05T16:07:10.5722977Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git >> $GITHUB_ENV[0m
+2026-03-05T16:07:10.5723330Z [36;1m  fi[0m
+2026-03-05T16:07:10.5723759Z [36;1mfi[0m
+2026-03-05T16:07:10.5768292Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:07:10.5768634Z env:
+2026-03-05T16:07:10.5768823Z   CARGO_TERM_COLOR: always
+2026-03-05T16:07:10.5769043Z   RUST_BACKTRACE: 1
+2026-03-05T16:07:10.5769246Z   RUST_VERSION: nightly
+2026-03-05T16:07:10.5769461Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:07:10.5769676Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:07:10.5769902Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:07:10.5770136Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:07:10.5770387Z   CARGO_INCREMENTAL: 0
+2026-03-05T16:07:10.5770585Z ##[endgroup]
+2026-03-05T16:07:10.6162285Z ##[group]Run : work around spurious network errors in curl 8.0
+2026-03-05T16:07:10.6162856Z [36;1m: work around spurious network errors in curl 8.0[0m
+2026-03-05T16:07:10.6163848Z [36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m
+2026-03-05T16:07:10.6164651Z [36;1mif rustc +nightly --version --verbose | grep -q '^release: 1\.7[01]\.'; then[0m
+2026-03-05T16:07:10.6165220Z [36;1m  echo CARGO_HTTP_MULTIPLEXING=false >> $GITHUB_ENV[0m
+2026-03-05T16:07:10.6165596Z [36;1mfi[0m
+2026-03-05T16:07:10.6216172Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:07:10.6216608Z env:
+2026-03-05T16:07:10.6216834Z   CARGO_TERM_COLOR: always
+2026-03-05T16:07:10.6217121Z   RUST_BACKTRACE: 1
+2026-03-05T16:07:10.6217370Z   RUST_VERSION: nightly
+2026-03-05T16:07:10.6217641Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:07:10.6217917Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:07:10.6218206Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:07:10.6218508Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:07:10.6218807Z   CARGO_INCREMENTAL: 0
+2026-03-05T16:07:10.6219065Z ##[endgroup]
+2026-03-05T16:07:10.6460166Z ##[group]Run rustc +nightly --version --verbose
+2026-03-05T16:07:10.6460544Z [36;1mrustc +nightly --version --verbose[0m
+2026-03-05T16:07:10.6509046Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-03-05T16:07:10.6509437Z env:
+2026-03-05T16:07:10.6509647Z   CARGO_TERM_COLOR: always
+2026-03-05T16:07:10.6509920Z   RUST_BACKTRACE: 1
+2026-03-05T16:07:10.6510155Z   RUST_VERSION: nightly
+2026-03-05T16:07:10.6510413Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:07:10.6510662Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:07:10.6510924Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:07:10.6511189Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:07:10.6511468Z   CARGO_INCREMENTAL: 0
+2026-03-05T16:07:10.6511698Z ##[endgroup]
+2026-03-05T16:07:10.6707136Z rustc 1.96.0-nightly (b90dc1e59 2026-03-04)
+2026-03-05T16:07:10.6708134Z binary: rustc
+2026-03-05T16:07:10.6708694Z commit-hash: b90dc1e597db0bbc0cab0eccb39747b1a9d7e607
+2026-03-05T16:07:10.6709546Z commit-date: 2026-03-04
+2026-03-05T16:07:10.6710040Z host: x86_64-unknown-linux-gnu
+2026-03-05T16:07:10.6710526Z release: 1.96.0-nightly
+2026-03-05T16:07:10.6710924Z LLVM version: 22.1.0

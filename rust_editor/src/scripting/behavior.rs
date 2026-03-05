@@ -131,18 +131,26 @@ impl Behavior for PatrolBehavior {
 /// Registro de comportamientos disponibles
 pub type BehaviorRegistry = HashMap<String, Box<dyn Fn() -> Box<dyn Behavior>>>;
 
+fn create_oscillate_behavior() -> Box<dyn Behavior> {
+    Box::new(OscillateBehavior::default())
+}
+
+fn create_patrol_behavior() -> Box<dyn Behavior> {
+    Box::new(PatrolBehavior::default())
+}
+
 /// Obtener registro global de comportamientos
 pub fn get_behavior_registry() -> BehaviorRegistry {
     let mut registry = HashMap::new();
 
     registry.insert(
         "oscillate".to_string(),
-        Box::new(|| Box::new(OscillateBehavior::default()) as Box<dyn Behavior>)
+        Box::new(create_oscillate_behavior)
     );
 
     registry.insert(
         "patrol".to_string(),
-        Box::new(|| Box::new(PatrolBehavior::default()) as Box<dyn Behavior>)
+        Box::new(create_patrol_behavior)
     );
 
     registry

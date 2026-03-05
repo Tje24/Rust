@@ -1,0 +1,8 @@
+2026-03-05T16:06:53.0050000Z Evaluating build-android.if
+2026-03-05T16:06:53.0050000Z Evaluating: success()
+2026-03-05T16:06:53.0050000Z Result: true
+2026-03-05T16:06:53.0880000Z Requested labels: ubuntu-latest
+2026-03-05T16:06:53.0880000Z Job defined at: Tje24/Rust/.github/workflows/main.yml@refs/heads/main
+2026-03-05T16:06:53.0880000Z Waiting for a runner to pick up this job...
+2026-03-05T16:06:53.1920000Z Job is about to start running on the hosted runner: GitHub Actions 1000000036
+2026-03-05T16:06:53.1910000Z Job is waiting for a hosted runner to come online.

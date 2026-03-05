@@ -41,19 +41,19 @@ impl EditorUI {
     }
     
     /// Dibujar panel de archivos
-    pub fn draw_files_panel(&mut self, ui: &mut egui::Ui, _app: &mut EditorApp) {
+    pub fn draw_files_panel(&mut self, ui: &mut egui::Ui, _mode: &mut crate::core::EditorMode, _viewport_mode: &mut crate::core::ViewportMode, _project_path: &Option<std::path::PathBuf>) {
         ui.heading("📁 Archivos");
         ui.separator();
-        
+
         ui.label("No hay proyecto abierto");
-        
+
         ui.add_space(10.0);
-        
+
         ui.horizontal(|ui| {
             if ui.button("➕ Nueva escena").clicked() {
                 log::info!("Crear nueva escena");
             }
-            
+
             if ui.button("📂 Abrir").clicked() {
                 log::info!("Abrir escena");
             }
@@ -110,8 +110,8 @@ impl EditorUI {
             egui::Color32::GRAY,
         );
 
-        // FPS counter - use input state's fps field
-        let fps = ui.ctx().input(|i| i.stats().fps());
+        // FPS counter - use egui's fps method from context
+        let fps = ui.ctx().fps();
         ui.label(format!("FPS: {:.0}", fps));
     }
 

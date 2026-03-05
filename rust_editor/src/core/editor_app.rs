@@ -179,14 +179,14 @@ impl eframe::App for EditorApp {
         egui::SidePanel::left("files_panel")
             .width_range(150.0..=300.0)
             .show(ctx, |ui| {
-                self.ui.draw_files_panel(ui, self);
+                self.ui.draw_files_panel(ui, &mut self.mode, &mut self.viewport_mode, &self.project_path);
             });
 
         // Panel derecho (inspector)
         egui::SidePanel::right("inspector_panel")
             .width_range(200.0..=350.0)
             .show(ctx, |ui| {
-                self.ui.draw_inspector(ui, self);
+                self.ui.draw_inspector(ui, &self.mode, &self.viewport_mode);
             });
 
         // Panel inferior (animación, tilemap, etc)
