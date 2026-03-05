@@ -51,13 +51,22 @@ impl EditorApp {
     /// Inicializar el renderer después de crear la instancia
     pub fn init_renderer(&mut self) {
         log::info!("Inicializando renderer...");
-        
-        // Por ahora, usar raylib como fallback
-        // En el futuro, detectar capacidades del hardware
-        self.renderer = Some(Box::new(
-            crate::render::RaylibBackend::new()
-        ));
-        
+
+        // Usar el backend según el feature activo
+        #[cfg(not(feature = "wgpu_backend"))]
+        {
+            use crate::render::RaylibBackend;
+            self.renderer = Some(Box::new(RaylibBackend::new()));
+            log::info!("Backend: Raylib (Dinámico)");
+        }
+
+        #[cfg(feature = "wgpu_backend")]
+        {
+            use crate::render::WgpuBackend;
+            self.renderer = Some(Box::new(WgpuBackend::new()));
+            log::info!("Backend: Wgpu (Bestia)");
+        }
+
         log::info!("Renderer inicializado: {:?}", self.render_mode);
     }
     
