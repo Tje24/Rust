@@ -1,0 +1,34 @@
+﻿2026-03-05T16:17:41.8286550Z ##[group]Run export NDK_BIN=$ANDROID_HOME/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin
+2026-03-05T16:17:41.8287231Z [36;1mexport NDK_BIN=$ANDROID_HOME/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin[0m
+2026-03-05T16:17:41.8287668Z [36;1mmkdir -p .cargo[0m
+2026-03-05T16:17:41.8287911Z [36;1mcat > .cargo/config.toml << EOF[0m
+2026-03-05T16:17:41.8288188Z [36;1m[target.aarch64-linux-android][0m
+2026-03-05T16:17:41.8288511Z [36;1mlinker = "$NDK_BIN/aarch64-linux-android24-clang"[0m
+2026-03-05T16:17:41.8288827Z [36;1mar = "$NDK_BIN/llvm-ar"[0m
+2026-03-05T16:17:41.8289084Z [36;1m[target.armv7-linux-androideabi][0m
+2026-03-05T16:17:41.8289423Z [36;1mlinker = "$NDK_BIN/armv7a-linux-androideabi24-clang"[0m
+2026-03-05T16:17:41.8289752Z [36;1mar = "$NDK_BIN/llvm-ar"[0m
+2026-03-05T16:17:41.8289975Z [36;1mEOF[0m
+2026-03-05T16:17:41.8290180Z [36;1m# Configurar variables para CMake[0m
+2026-03-05T16:17:41.8290536Z [36;1mecho "CFLAGS=-DANDROID -D__ANDROID_API__=24" >> $GITHUB_ENV[0m
+2026-03-05T16:17:41.8291321Z [36;1mecho "CXXFLAGS=-DANDROID -D__ANDROID_API__=24" >> $GITHUB_ENV[0m
+2026-03-05T16:17:41.8335843Z shell: /usr/bin/bash -e {0}
+2026-03-05T16:17:41.8336097Z env:
+2026-03-05T16:17:41.8336282Z   CARGO_TERM_COLOR: always
+2026-03-05T16:17:41.8336509Z   RUST_BACKTRACE: 1
+2026-03-05T16:17:41.8336705Z   RUST_VERSION: nightly
+2026-03-05T16:17:41.8336937Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:17:41.8337163Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:17:41.8337384Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:17:41.8337620Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:17:41.8337851Z   CARGO_INCREMENTAL: 0
+2026-03-05T16:17:41.8338057Z   CACHE_ON_FAILURE: false
+2026-03-05T16:17:41.8338287Z   ANDROID_HOME: /usr/local/lib/android/sdk
+2026-03-05T16:17:41.8338595Z   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+2026-03-05T16:17:41.8338934Z   ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/26.1.10909125
+2026-03-05T16:17:41.8339306Z   NDK_HOME: /usr/local/lib/android/sdk/ndk/26.1.10909125
+2026-03-05T16:17:41.8341040Z   PATH: /usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/cmdline-tools/16.0/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+2026-03-05T16:17:41.8342855Z   LD_LIBRARY_PATH: /usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/../lib64:
+2026-03-05T16:17:41.8343539Z   CMAKE_TOOLCHAIN_FILE: /usr/local/lib/android/sdk/ndk/26.1.10909125/build/cmake/android.toolchain.cmake
+2026-03-05T16:17:41.8344076Z   ANDROID_NDK_ROOT: /usr/local/lib/android/sdk/ndk/26.1.10909125
+2026-03-05T16:17:41.8344387Z ##[endgroup]

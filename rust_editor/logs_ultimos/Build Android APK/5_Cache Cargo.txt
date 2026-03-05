@@ -1,0 +1,55 @@
+﻿2026-03-05T16:16:57.4125367Z ##[group]Run Swatinem/rust-cache@v2
+2026-03-05T16:16:57.4125888Z with:
+2026-03-05T16:16:57.4126159Z   workspaces: rust_editor
+2026-03-05T16:16:57.4176466Z   prefix-key: v0-rust
+2026-03-05T16:16:57.4176870Z   add-job-id-key: true
+2026-03-05T16:16:57.4177249Z   add-rust-environment-hash-key: true
+2026-03-05T16:16:57.4177665Z   cache-targets: true
+2026-03-05T16:16:57.4177989Z   cache-all-crates: false
+2026-03-05T16:16:57.4178364Z   cache-workspace-crates: false
+2026-03-05T16:16:57.4178606Z   save-if: true
+2026-03-05T16:16:57.4178793Z   cache-provider: github
+2026-03-05T16:16:57.4178995Z   cache-bin: true
+2026-03-05T16:16:57.4179192Z   lookup-only: false
+2026-03-05T16:16:57.4179624Z env:
+2026-03-05T16:16:57.4179802Z   CARGO_TERM_COLOR: always
+2026-03-05T16:16:57.4180015Z   RUST_BACKTRACE: 1
+2026-03-05T16:16:57.4180213Z   RUST_VERSION: nightly
+2026-03-05T16:16:57.4180421Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:16:57.4180866Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:16:57.4181094Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:16:57.4181360Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:16:57.4181603Z   CARGO_INCREMENTAL: 0
+2026-03-05T16:16:57.4181806Z ##[endgroup]
+2026-03-05T16:16:57.8365746Z ##[group]Cache Configuration
+2026-03-05T16:16:57.8366267Z Cache Provider:
+2026-03-05T16:16:57.8366610Z     github
+2026-03-05T16:16:57.8366927Z Workspaces:
+2026-03-05T16:16:57.8367306Z     /home/runner/work/Rust/Rust/rust_editor
+2026-03-05T16:16:57.8367767Z Cache Paths:
+2026-03-05T16:16:57.8368108Z     /home/runner/.cargo/bin
+2026-03-05T16:16:57.8368518Z     /home/runner/.cargo/.crates.toml
+2026-03-05T16:16:57.8368988Z     /home/runner/.cargo/.crates2.json
+2026-03-05T16:16:57.8369485Z     /home/runner/.cargo/registry
+2026-03-05T16:16:57.8369934Z     /home/runner/.cargo/git
+2026-03-05T16:16:57.8370398Z     /home/runner/work/Rust/Rust/rust_editor/target
+2026-03-05T16:16:57.8371228Z Restore Key:
+2026-03-05T16:16:57.8371626Z     v0-rust-build-android-Linux-x64-4fd6c054
+2026-03-05T16:16:57.8372106Z Cache Key:
+2026-03-05T16:16:57.8372559Z     v0-rust-build-android-Linux-x64-4fd6c054-0ed5dc49
+2026-03-05T16:16:57.8373077Z .. Prefix:
+2026-03-05T16:16:57.8373397Z   - v0-rust-build-android-Linux-x64
+2026-03-05T16:16:57.8373846Z .. Environment considered:
+2026-03-05T16:16:57.8374575Z   - Rust Version: 1.96.0-nightly x86_64-unknown-linux-gnu (b90dc1e597db0bbc0cab0eccb39747b1a9d7e607)
+2026-03-05T16:16:57.8375386Z   - CARGO_HOME
+2026-03-05T16:16:57.8375729Z   - CARGO_INCREMENTAL
+2026-03-05T16:16:57.8376085Z   - CARGO_TERM_COLOR
+2026-03-05T16:16:57.8376423Z   - RUST_BACKTRACE
+2026-03-05T16:16:57.8376757Z   - RUST_VERSION
+2026-03-05T16:16:57.8377094Z .. Lockfiles considered:
+2026-03-05T16:16:57.8377613Z   - /home/runner/work/Rust/Rust/rust_editor/.cargo/config.toml
+2026-03-05T16:16:57.8378252Z   - /home/runner/work/Rust/Rust/rust_editor/Cargo.toml
+2026-03-05T16:16:57.8379068Z ##[endgroup]
+2026-03-05T16:16:57.8379262Z 
+2026-03-05T16:16:57.8379411Z ... Restoring cache ...
+2026-03-05T16:16:57.9578962Z No cache found.

@@ -61,12 +61,12 @@ impl EditorUI {
     }
     
     /// Dibujar inspector
-    pub fn draw_inspector(&mut self, ui: &mut egui::Ui, _app: &mut EditorApp) {
+    pub fn draw_inspector(&mut self, ui: &mut egui::Ui, _mode: &crate::core::EditorMode, _viewport_mode: &crate::core::ViewportMode) {
         ui.heading("🔍 Inspector");
         ui.separator();
-        
+
         ui.label("No hay nodo seleccionado");
-        
+
         ui.add_space(10.0);
 
         ui.collapsing("Transform", |ui| {
@@ -110,8 +110,8 @@ impl EditorUI {
             egui::Color32::GRAY,
         );
 
-        // FPS counter - use egui's fps method from context
-        let fps = ui.ctx().fps();
+        // FPS counter - use run method to get FPS from context
+        let fps = ui.ctx().input(|i| i.fps());
         ui.label(format!("FPS: {:.0}", fps));
     }
 

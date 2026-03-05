@@ -1,0 +1,110 @@
+﻿2026-03-05T16:17:21.7645304Z ##[group]Run $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"
+2026-03-05T16:17:21.7645978Z [36;1m$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.1.10909125"[0m
+2026-03-05T16:17:21.7646497Z [36;1mecho "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV[0m
+2026-03-05T16:17:21.7646946Z [36;1mecho "NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV[0m
+2026-03-05T16:17:21.7697193Z shell: /usr/bin/bash -e {0}
+2026-03-05T16:17:21.7697454Z env:
+2026-03-05T16:17:21.7697814Z   CARGO_TERM_COLOR: always
+2026-03-05T16:17:21.7698039Z   RUST_BACKTRACE: 1
+2026-03-05T16:17:21.7698244Z   RUST_VERSION: nightly
+2026-03-05T16:17:21.7698462Z   ANDROID_SDK_VERSION: 34
+2026-03-05T16:17:21.7698681Z   NDK_VERSION: 26.1.10909125
+2026-03-05T16:17:21.7698909Z   BUILD_TOOLS_VERSION: 34.0.0
+2026-03-05T16:17:21.7699139Z   CARGO_HOME: /home/runner/.cargo
+2026-03-05T16:17:21.7699385Z   CARGO_INCREMENTAL: 0
+2026-03-05T16:17:21.7699596Z   CACHE_ON_FAILURE: false
+2026-03-05T16:17:21.7699858Z   ANDROID_HOME: /usr/local/lib/android/sdk
+2026-03-05T16:17:21.7700148Z   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+2026-03-05T16:17:21.7700409Z ##[endgroup]
+2026-03-05T16:17:24.9364332Z Warning: This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+2026-03-05T16:17:25.1018894Z Loading package information...                                                  
+2026-03-05T16:17:25.1938533Z Loading local repository...                                                     
+2026-03-05T16:17:25.1941302Z [                                       ] 3% Loading local repository...        
+2026-03-05T16:17:25.6841918Z [                                       ] 3% Fetch remote repository...         
+2026-03-05T16:17:26.2240348Z [=                                      ] 3% Fetch remote repository...         
+2026-03-05T16:17:26.2992037Z [=                                      ] 4% Fetch remote repository...         
+2026-03-05T16:17:26.3552043Z [=                                      ] 5% Fetch remote repository...         
+2026-03-05T16:17:26.4033710Z [==                                     ] 5% Fetch remote repository...         
+2026-03-05T16:17:26.5190386Z [==                                     ] 6% Fetch remote repository...         
+2026-03-05T16:17:27.0463378Z [==                                     ] 7% Fetch remote repository...         
+2026-03-05T16:17:27.0464325Z [==                                     ] 7% Computing updates...               
+2026-03-05T16:17:27.0609796Z [===                                    ] 8% Computing updates...               
+2026-03-05T16:17:27.0760350Z [===                                    ] 10% Computing updates...              
+2026-03-05T16:17:27.9977423Z [===                                    ] 10% Installing NDK (Side by side) 26.1
+2026-03-05T16:17:28.0721743Z [===                                    ] 10% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.1494166Z [====                                   ] 10% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.2885335Z [====                                   ] 11% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.4314578Z [====                                   ] 12% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.5147056Z [=====                                  ] 13% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.5879021Z [=====                                  ] 14% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.6266567Z [=====                                  ] 15% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.6700410Z [======                                 ] 15% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.7376968Z [======                                 ] 16% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.8200197Z [======                                 ] 17% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.8830519Z [=======                                ] 18% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.9601572Z [=======                                ] 19% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:28.9882540Z [=======                                ] 20% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.0164364Z [========                               ] 20% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.0964660Z [========                               ] 21% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.1518604Z [========                               ] 22% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.2068435Z [=========                              ] 23% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.2941594Z [=========                              ] 24% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.3293636Z [=========                              ] 25% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.3709908Z [==========                             ] 25% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.4600261Z [==========                             ] 26% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.5239589Z [==========                             ] 27% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.6039936Z [===========                            ] 28% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.6649536Z [===========                            ] 29% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.6927447Z [===========                            ] 30% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.7367036Z [============                           ] 30% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.7925988Z [============                           ] 31% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.8559172Z [============                           ] 32% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:29.8562804Z [============                           ] 33% Downloading android-ndk-r26b-linux
+2026-03-05T16:17:30.4208338Z [============                           ] 33% Unzipping...                      
+2026-03-05T16:17:30.4212147Z [============                           ] 33% Unzipping... android-ndk-r26b/    
+2026-03-05T16:17:30.4223135Z [============                           ] 33% Unzipping... android-ndk-r26b/CHAN
+2026-03-05T16:17:30.4227260Z [=============                          ] 33% Unzipping... android-ndk-r26b/CHAN
+2026-03-05T16:17:30.4239185Z [=============                          ] 33% Unzipping... android-ndk-r26b/wrap
+2026-03-05T16:17:30.5633715Z [=============                          ] 33% Unzipping... android-ndk-r26b/preb
+2026-03-05T16:17:30.8391353Z [=============                          ] 33% Unzipping... android-ndk-r26b/buil
+2026-03-05T16:17:30.8420139Z [=============                          ] 33% Unzipping... android-ndk-r26b/NOTI
+2026-03-05T16:17:30.8429237Z [=============                          ] 33% Unzipping... android-ndk-r26b/ndk-
+2026-03-05T16:17:30.8467100Z [=============                          ] 33% Unzipping... android-ndk-r26b/NOTI
+2026-03-05T16:17:30.8472717Z [=============                          ] 33% Unzipping... android-ndk-r26b/meta
+2026-03-05T16:17:30.8670476Z [=============                          ] 33% Unzipping... android-ndk-r26b/ndk-
+2026-03-05T16:17:30.9624420Z [=============                          ] 33% Unzipping... android-ndk-r26b/pyth
+2026-03-05T16:17:31.4678860Z [=============                          ] 33% Unzipping... android-ndk-r26b/sour
+2026-03-05T16:17:31.6950081Z [=============                          ] 33% Unzipping... android-ndk-r26b/simp
+2026-03-05T16:17:31.6951632Z [=============                          ] 33% Unzipping... android-ndk-r26b/ndk-
+2026-03-05T16:17:31.6953086Z [=============                          ] 33% Unzipping... android-ndk-r26b/READ
+2026-03-05T16:17:31.7387293Z [=============                          ] 33% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:32.1481935Z [=============                          ] 34% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:32.3393499Z [=============                          ] 35% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:32.5484714Z [==============                         ] 35% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:32.8763588Z [==============                         ] 36% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:33.3106818Z [==============                         ] 37% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:33.7483680Z [===============                        ] 38% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:34.1743407Z [===============                        ] 39% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:34.3338429Z [===============                        ] 40% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:34.5548551Z [================                       ] 40% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:34.9439821Z [================                       ] 41% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:35.8797492Z [================                       ] 42% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:36.5555185Z [=================                      ] 43% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:37.0772965Z [=================                      ] 44% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:37.3007413Z [=================                      ] 45% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:37.5085093Z [==================                     ] 45% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:37.9666999Z [==================                     ] 46% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:38.4405592Z [==================                     ] 47% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:38.7804539Z [===================                    ] 48% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:39.2190377Z [===================                    ] 49% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:39.4832417Z [===================                    ] 50% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:39.6436829Z [====================                   ] 50% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:40.1408025Z [====================                   ] 51% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:40.4689497Z [====================                   ] 52% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:40.8943638Z [=====================                  ] 53% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:41.3172676Z [=====================                  ] 54% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:41.3907071Z [=====================                  ] 55% Unzipping... android-ndk-r26b/tool
+2026-03-05T16:17:41.3908789Z [=====================                  ] 55% Unzipping... android-ndk-r26b/ndk-
+2026-03-05T16:17:41.6143063Z [=====================                  ] 55% Unzipping... android-ndk-r26b/shad
+2026-03-05T16:17:41.6144276Z [=======================================] 100% Unzipping... android-ndk-r26b/sha
+2026-03-05T16:17:41.7556843Z 
