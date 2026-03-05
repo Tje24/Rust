@@ -1,0 +1,444 @@
+================================================================================
+DIAGNÓSTICO COMPLETO DE ERRORES Y ADVERTENCIAS EN LA COMPILACIÓN RUST
+Repositorio: Tje24/Rust
+Referencia: Imágenes 1-6 del build de GitHub Actions (Screenshot_20260305-113639.png 
+            a Screenshot_20260305-113730.png)
+================================================================================
+
+RESUMEN EJECUTIVO
+-----------------
+El build falló con 14 errores de compilación (E0499, E0599, E0308, E0061, E0609, 
+E0271, E0277, E0592) y 4 advertencias. Todos son corregibles siguiendo las 
+instrucciones específicas para cada caso.
+
+================================================================================
+ERROR 1: Préstamos Múltiples Mutables (E0499)
+================================================================================
+Referencia: Imágenes 1, 2 y 3
+
+MENSAJE DEL ERROR:
+error[E0499]: cannot borrow `*self.ui` as mutable more than once at a time
+   --> src/core/editor_app.rs:182:25
+    |
+182 | self.ui.draw_files_panel(ui, &self.project_path);
+    |                         --      ^^^^^^^^^^^^^^^^
+    |                         |
+    |                         first mutable borrow occurs here
+
+QUÉ SIGNIFICA:
+Rust no permite tener dos referencias mutables (préstamos mutables) al mismo 
+tiempo sobre el mismo valor. En tu código, al llamar funciones como:
+
+    self.ui.draw_files_panel(ui, self);
+
+estás pasando self y self.ui como mutables, lo que genera dos préstamos 
+solapados. El compilador detecta que:
+  1. Primero tomas un préstamo mutable de self.ui para llamar al método
+  2. Luego intentas pasar self (que contiene self.ui) como segundo argumento
+
+POR QUÉ SUCEDE:
+Las reglas de borrowing de Rust garantizan seguridad en tiempo de compilación. 
+Cuando tienes &mut self.ui activo, no puedes también pasar &mut self porque 
+self contiene a self.ui.
+
+CÓMO SE CORRIGE:
+1. Refactoriza la función para que sólo haya una referencia mutable activa en 
+   cada momento.
+2. Separa partes en funciones auxiliares o usa scopes explícitos.
+3. Evita pasar varias veces self mutablemente en la misma llamada.
+4. Alternativa: usa tipos como RefCell o Mutex para mutabilidad interior 
+   (solo si es estrictamente necesario).
+
+Ejemplo de corrección aplicada:
+    // ANTES (incorrecto):
+    self.ui.draw_files_panel(ui, &self.project_path);
+    
+    // DESPUÉS (correcto - pasar self completo):
+    self.ui.draw_files_panel(ui, self);
+
+================================================================================
+ERROR 2: Falta el Método Clone para un Struct (E0599)
+================================================================================
+Referencia: Imagen 3
+
+MENSAJE DEL ERROR:
+error[E0599]: no method named `clone` found for struct `Entity` in the current scope
+   --> src/ecs/entity.rs:24:45
+    |
+24  | self.entities.insert(id, entity.clone());
+    |                                 ^^^^^ method not found
+
+QUÉ SIGNIFICA:
+Estás tratando de clonar una instancia de tu struct Entity pero no 
+implementaste/derive el trait Clone, que es necesario para usar .clone().
+
+POR QUÉ SUCEDE:
+En Rust, solo los tipos que implementan el trait Clone pueden ser clonados. 
+Los structs que contienen trait objects (como Box<dyn Any + Send + Sync>) 
+NO pueden derivar Clone automáticamente porque los trait objects no son 
+clonables.
+
+CÓMO SE CORRIGE:
+Opción A - Si el struct NO contiene trait objects:
+    #[derive(Clone)]
+    pub struct Entity { ... }
+
+Opción B - Si el struct SÍ contiene trait objects (tu caso):
+    - Elimina el derive Clone completamente
+    - Implementa Clone manualmente si es posible
+    - O rediseña para no necesitar clonar la entidad
+
+En tu caso específico, Entity contiene:
+    pub components: HashMap<String, Box<dyn std::any::Any + Send + Sync>>
+    
+Esto hace que Clone sea imposible. La solución es eliminar el derive Clone.
+
+================================================================================
+ERROR 3: Variante de Enum No Existente (E0599)
+================================================================================
+Referencia: Imágenes 2 y 3
+
+MENSAJE DEL ERROR:
+error[E0599]: no variant or associated item named `Terminate` found for enum 
+`MainEvent<'_'>` in the current scope
+   --> src/lib.rs:51:45
+    |
+51  | if let android_activity::MainEvent::Terminate = event {
+
+QUÉ SIGNIFICA:
+Intentas usar una variante (MainEvent::Terminate) que no existe en el enum.
+
+POR QUÉ SUCEDE:
+1. Cambio de versión en la dependencia android_activity
+2. Error tipográfico en el nombre de la variante
+3. La variante fue renombrada o removida en la versión actual
+
+CÓMO SE CORRIGE:
+1. Verifica cómo está definido MainEvent actualmente en la documentación:
+   https://docs.rs/android-activity/latest/android_activity/enum.MainEvent.html
+
+2. En android_activity 0.6.x, las variantes correctas son:
+   - MainEvent::Terminate → NO existe
+   - Usa en su lugar: callback para detectar cuando la app debe cerrar
+
+3. Patrón correcto para android_activity 0.6:
+    let mut running = true;
+    app.poll_events(Some(Duration::from_millis(10)), |event| {
+        // Manejar eventos específicos según la API actual
+        // No usar MainEvent::Terminate directamente
+    });
+
+================================================================================
+ERROR 4: Advertencias de Imports No Usados
+================================================================================
+Referencia: Imágenes 4 y 5
+
+MENSAJES:
+warning: unused import: `Vec4`
+  --> src/render/render_backend.rs:5:20
+   |
+5  | use glam::{Vec3, Vec4};
+   |                    ^^^^
+
+warning: unused import: `Node`
+  --> src/scripting/components.rs:4:35
+   |
+4  | use crate::scripting::node::{AsComponent, Node};
+   |                                   ^^^^^^
+
+warning: unused import: `LoopMode`
+  --> src/animation/timeline.rs:3:24
+   |
+3  | use super::{Animation, LoopMode};
+   |                        ^^^^^^^^
+
+QUÉ SIGNIFICA:
+Importaste módulos que nunca llegaste a usar en el archivo fuente.
+
+POR QUÉ SUCEDE:
+- Código refactorizado donde las importaciones quedaron obsoletas
+- Copiar/pegar código sin limpiar imports
+- Cambios en la estructura del proyecto
+
+CÓMO SE CORRIGE:
+Elimina los imports sobrantes:
+
+    // ANTES:
+    use glam::{Vec3, Vec4};
+    
+    // DESPUÉS (si solo usas Vec3):
+    use glam::Vec3;
+
+    // ANTES:
+    use super::{Animation, LoopMode};
+    
+    // DESPUÉS (si solo usas Animation):
+    use super::Animation;
+
+================================================================================
+ERROR 5: Método No Encontrado para una Referencia (E0609)
+================================================================================
+Referencia: Imagen 5
+
+MENSAJE DEL ERROR:
+error[E0609]: no field `fps` on type `&InputState`
+   --> src/ui/editor_ui.rs:114:61
+    |
+114 | ui.label(format!("FPS: {:.0}", ui.ctx().input(|i| i.fps)));
+    |                                                             ^^^ unknown field
+
+QUÉ SIGNIFICA:
+Estás intentando acceder a un campo .fps que no existe en el tipo InputState.
+
+POR QUÉ SUCEDE:
+En versiones recientes de egui (0.29+), el campo fps fue movido o renombrado. 
+La API cambió y ahora se accede diferente.
+
+CÓMO SE CORRIGE:
+Usa el método correcto según la versión de egui:
+
+    // ANTES (egui antiguo):
+    ui.ctx().input(|i| i.fps)
+    
+    // DESPUÉS (egui 0.29+):
+    ui.ctx().input(|i| i.stats().fps())
+    
+    // O alternativamente:
+    ui.ctx().input(|i| i.raw.current_fps)
+
+Verifica la documentación de egui para tu versión específica.
+
+================================================================================
+ERROR 6: Desajustes de Tipos con Closures y HashMap (E0308, E0271)
+================================================================================
+Referencia: Imágenes 5 y 6
+
+MENSAJES PRINCIPALES:
+error[E0308]: mismatched types
+   --> src/scripting/behavior.rs:140:21
+    |
+140 | Box::new(|| Box::new(OscillateBehavior::default())) as Box<dyn Fn() -> Box<dyn Behavior>>
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Behavior>`, 
+    |                     found `Box<OscillateBehavior>`
+
+error[E0271]: expected `{closure@behavior.rs:140:18}` to return `Box<dyn Behavior>`, 
+but it returns `Box<OscillateBehavior>`
+
+QUÉ SIGNIFICA:
+Rust asigna un tipo único para cada closure, incluso aunque tengan la misma 
+firma. Cuando intentas meter múltiples closures distintas a un HashMap que 
+espera un trait object, los tipos no coinciden.
+
+POR QUÉ SUCEDE:
+1. Cada closure en Rust tiene su propio tipo único generado por el compilador
+2. Aunque dos closures tengan la misma firma, sus tipos son diferentes
+3. El cast debe hacerse en el valor RETORNADO, no en el closure completo
+
+CÓMO SE CORRIGE:
+Usa trait objects para todos los closures guardados en el HashMap:
+
+    // ANTES (incorrecto):
+    registry.insert(
+        "oscillate".to_string(),
+        Box::new(|| Box::new(OscillateBehavior::default())) as Box<dyn Fn() -> Box<dyn Behavior>>
+    );
+    
+    // DESPUÉS (correcto - cast en el retorno):
+    registry.insert(
+        "oscillate".to_string(),
+        Box::new(|| Box::new(OscillateBehavior::default()) as Box<dyn Behavior>)
+    );
+    
+    registry.insert(
+        "patrol".to_string(),
+        Box::new(|| Box::new(PatrolBehavior::default()) as Box<dyn Behavior>)
+    );
+
+La diferencia clave: el cast `as Box<dyn Behavior>` va DESPUÉS del Box::new 
+interno, no después del Box::new externo del closure.
+
+================================================================================
+ERROR 7: Funciones Duplicadas (E0592)
+================================================================================
+Referencia: Imagen 2
+
+MENSAJE DEL ERROR:
+error[E0592]: duplicate definitions with name `draw_files_panel`
+   --> src/ui/editor_ui.rs:44:5
+    |
+44  | pub fn draw_files_panel(&mut self, ui: &mut egui::Ui, _app: &mut EditorApp) {
+    |     -----------------------------------------------------------------------
+    |     other definition for `draw_files_panel`
+...
+118 | pub fn draw_files_panel(&mut self, ui: &mut egui::Ui, _project_path: &Option<PathBuf>) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     duplicate definitions for `draw_files_panel`
+
+QUÉ SIGNIFICA:
+Tienes dos funciones con el mismo nombre en el mismo módulo.
+
+POR QUÉ SUCEDE:
+- Código duplicado durante desarrollo
+- Merge conflict no resuelto correctamente
+- Copiar/pegar sin eliminar la versión anterior
+
+CÓMO SE CORRIGE:
+1. Identifica cuál versión de la función quieres mantener
+2. Elimina la definición duplicada
+3. Actualiza todas las llamadas para usar la función restante
+
+En tu caso, mantén la versión que recibe `&mut EditorApp` y elimina la que 
+recibe `&Option<PathBuf>`.
+
+================================================================================
+ERROR 8: android_logger Config API Incorrecta (E0599)
+================================================================================
+Referencia: Imagen 4
+
+MENSAJE DEL ERROR:
+error[E0599]: `Config` is not an iterator
+   --> src/lib.rs:22:14
+    |
+22  | Config::default()
+23  |     .filter(log::LevelFilter::Debug)
+    |      ^^^^^^ `Config` is not an iterator
+
+QUÉ SIGNIFICA:
+Estás llamando .filter() en Config pero ese método no existe.
+
+POR QUÉ SUCEDE:
+La API de android_logger cambió entre versiones. En 0.14.x:
+- .filter() NO existe
+- El método correcto es .with_max_level()
+
+CÓMO SE CORRIGE:
+
+    // ANTES (android_logger antiguo):
+    android_logger::Config::default()
+        .filter(log::LevelFilter::Debug)
+        .with_tag("rust_editor")
+    
+    // DESPUÉS (android_logger 0.14+):
+    android_logger::Config::default()
+        .with_max_level(log::LevelFilter::Debug)
+        .with_tag("rust_editor")
+
+================================================================================
+ERROR 9: poll_events() con Argumentos Incorrectos (E0061, E0599)
+================================================================================
+Referencia: Imagen 4
+
+MENSAJE DEL ERROR:
+error[E0061]: this method takes 2 arguments but 0 arguments were supplied
+   --> src/lib.rs:51:16
+    |
+51  | if app.poll_events().is_some() {
+    |        ^^^^^^^^^^^-- two arguments are missing
+
+error[E0599]: no method named `is_some` found for unit type `()` in the current scope
+   --> src/lib.rs:51:30
+    |
+51  | if app.poll_events().is_some() {
+    |                      ^^^^^^^ method not found in `()`
+
+QUÉ SIGNIFICA:
+poll_events() requiere dos argumentos: timeout y callback. No retorna Option.
+
+POR QUÉ SUCEDE:
+La API de android_activity 0.6.x cambió significativamente:
+- Ahora requiere timeout: Option<Duration>
+- Ahora requiere callback: F donde F: FnMut(InputEvent)
+- Retorna () (unit), no Option
+
+CÓMO SE CORRIGE:
+
+    // ANTES (android_activity antiguo):
+    loop {
+        if app.poll_events().is_some() {
+            break;
+        }
+        // ...
+    }
+    
+    // DESPUÉS (android_activity 0.6+):
+    use std::time::Duration;
+    let mut running = true;
+    while running {
+        app.poll_events(Some(Duration::from_millis(10)), |event| {
+            // Manejar eventos aquí
+            // Para detectar cierre, usa lógica personalizada
+        });
+        // ...
+    }
+
+================================================================================
+DIAGNÓSTICO GLOBAL Y CONSEJOS
+================================================================================
+
+1. SIGUE LOS MENSAJES DE ERROR:
+   Rust es muy detallista. Casi siempre la solución correcta está literalmente 
+   en el mensaje del compilador. Lee cuidadosamente cada línea.
+
+2. NO IGNORES LOS WARNINGS:
+   Limpia los imports y código muerto para evitar errores futuros y mantener 
+   el código limpio.
+
+3. CHEQUEA CAMBIOS DE DEPENDENCIAS:
+   Si usas crates externos (egui, android_activity, android_logger), siempre 
+   revisa la documentación oficial para tu versión específica. Las APIs cambian 
+   entre versiones mayores.
+
+4. REVISAR PRÉSTAMOS MUTABLES:
+   Mantén una sola referencia mutable activa sobre una estructura a la vez. 
+   Si necesitas múltiples accesos, refactoriza o usa patrones como interior 
+   mutability con precaución.
+
+5. UNIFICA FIRMAS DE CLOSURES:
+   Cuando uses colecciones de funciones, asegúrate que la firma de todas las 
+   closures matchee el trait esperado (ej: Box<dyn Fn()>).
+
+6. VERSIONES COMPATIBLES:
+   Verifica que todas tus dependencias sean compatibles entre sí. Usa 
+   `cargo tree` para ver el árbol de dependencias.
+
+================================================================================
+CORRECCIÓN RÁPIDA SUGERIDA (CHECKLIST)
+================================================================================
+□ Refactoriza para no pedir dos referencias mutables al mismo valor a la vez
+□ Usa #[derive(Clone)] SOLO en structs que NO contengan trait objects
+□ Actualiza enums/variant names según la definición vigente de cada crate
+□ Limpia los imports innecesarios (Vec4, Node, LoopMode, Config)
+□ Implementa o usa sólo métodos realmente disponibles para cada tipo
+□ Usa trait objects (Box<dyn Fn...>) correctamente para guardar closures
+□ Actualiza llamadas a API cambiadas: .filter() → .with_max_level()
+□ Actualiza poll_events() con timeout y callback
+□ Usa stats().fps() en lugar de .fps directamente en egui 0.29+
+
+================================================================================
+COMANDOS ÚTILES PARA DEBUGGING
+================================================================================
+# Verificar errores localmente (si tienes recursos):
+cargo check --target aarch64-linux-android
+
+# Ver árbol de dependencias:
+cargo tree
+
+# Ver versiones de crates:
+cargo tree --depth 1
+
+# Limpiar y recompilar:
+cargo clean && cargo build
+
+================================================================================
+RECURSOS ADICIONALES
+================================================================================
+- Documentación de Rust: https://doc.rust-lang.org/book/
+- Rust by Example: https://doc.rust-lang.org/rust-by-example/
+- egui docs: https://docs.rs/egui/latest/egui/
+- android_activity docs: https://docs.rs/android-activity/latest/
+- android_logger docs: https://docs.rs/android_logger/latest/
+- Rust Compiler Errors: https://doc.rust-lang.org/error-index.html
+
+================================================================================
+FIN DEL DIAGNÓSTICO
+================================================================================
