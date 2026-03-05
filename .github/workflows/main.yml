@@ -104,10 +104,10 @@ jobs:
           ls -la .
 
       - name: Build ARM64
-        run: cargo build --release --target aarch64-linux-android --lib
+        run: cargo build --release --target aarch64-linux-android --lib --no-default-features --features android
 
       - name: Build ARMv7
-        run: cargo build --release --target armv7-linux-androideabi --lib
+        run: cargo build --release --target armv7-linux-androideabi --lib --no-default-features --features android
 
       - name: Create APK Structure
         run: |
