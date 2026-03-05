@@ -1,6 +1,6 @@
 // src/animation/timeline.rs - Timeline de animación
 
-use super::Animation;
+use super::{Animation, LoopMode};
 
 /// Timeline para edición de animaciones
 pub struct Timeline {

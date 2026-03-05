@@ -1,7 +1,7 @@
 // src/scripting/scene.rs - Estructura de escena
 
 use uuid::Uuid;
-use super::{SceneMetadata, PhysicsSettings, SceneAssets};
+use super::{SceneMetadata, PhysicsSettings, SceneAssets, Node};
 use crate::animation::Animation;
 
 /// Escena del juego

@@ -1,6 +1,7 @@
 // src/scripting/components.rs - Componentes del ECS
 
 use glam::{Vec3, Quat};
+use crate::scripting::node::{AsComponent, Node};
 
 /// Componentes disponibles
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -145,7 +146,7 @@ pub enum PropertyValue {
 }
 
 // Implementar traits para conversión de componentes
-impl super::AsComponent for TransformComponent {
+impl AsComponent for TransformComponent {
     fn as_ref(component: &Component) -> Option<&Self> {
         if let Component::Transform(t) = component {
             Some(t)
@@ -153,7 +154,7 @@ impl super::AsComponent for TransformComponent {
             None
         }
     }
-    
+
     fn as_mut(component: &mut Component) -> Option<&mut Self> {
         if let Component::Transform(t) = component {
             Some(t)
@@ -163,7 +164,7 @@ impl super::AsComponent for TransformComponent {
     }
 }
 
-impl super::AsComponent for MeshComponent {
+impl AsComponent for MeshComponent {
     fn as_ref(component: &Component) -> Option<&Self> {
         if let Component::Mesh(m) = component {
             Some(m)
