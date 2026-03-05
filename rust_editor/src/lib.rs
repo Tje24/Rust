@@ -13,15 +13,13 @@ pub mod export;
 
 #[cfg(target_os = "android")]
 use android_logger::Config;
-#[cfg(target_os = "android")]
-use log::Level;
 
 /// Inicialización específica para Android
 #[cfg(target_os = "android")]
 fn init_android_logging() {
     android_logger::init_once(
         Config::default()
-            .with_min_level(Level::Debug)
+            .filter(log::LevelFilter::Debug)
             .with_tag("rust_editor")
     );
     log::info!("🦀 Rust Editor iniciado en Android");

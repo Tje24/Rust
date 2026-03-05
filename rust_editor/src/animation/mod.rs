@@ -3,7 +3,7 @@
 mod animation;
 mod timeline;
 
-pub use animation::Animation;
+pub use animation::{Animation, LoopMode};
 pub use timeline::Timeline;
 
 /// Track de animación

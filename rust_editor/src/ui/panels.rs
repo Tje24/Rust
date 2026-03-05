@@ -15,13 +15,13 @@ impl FilesPanel {
     pub fn draw(&mut self, ui: &mut egui::Ui, _app: &mut EditorApp) {
         ui.heading("📁 Archivos");
         ui.separator();
-        
-        if let Some(root) = &self.root_path {
+
+        if let Some(root) = &self.root_path.clone() {
             // Mostrar árbol de directorios
             self.draw_directory(ui, root);
         } else {
             ui.label("No hay proyecto abierto");
-            
+
             if ui.button("Abrir proyecto").clicked() {
                 // TODO: Abrir diálogo de archivos
                 log::info!("Abrir proyecto");
@@ -89,23 +89,32 @@ impl InspectorPanel {
         ui.collapsing("Transform", |ui| {
             ui.horizontal(|ui| {
                 ui.label("Position:");
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(0.1));
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(0.1));
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(0.1));
+                let mut pos_x = 0.0f32;
+                let mut pos_y = 0.0f32;
+                let mut pos_z = 0.0f32;
+                ui.add(egui::DragValue::new(&mut pos_x).speed(0.1));
+                ui.add(egui::DragValue::new(&mut pos_y).speed(0.1));
+                ui.add(egui::DragValue::new(&mut pos_z).speed(0.1));
             });
-            
+
             ui.horizontal(|ui| {
                 ui.label("Rotation:");
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(1.0));
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(1.0));
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(1.0));
+                let mut rot_x = 0.0f32;
+                let mut rot_y = 0.0f32;
+                let mut rot_z = 0.0f32;
+                ui.add(egui::DragValue::new(&mut rot_x).speed(1.0));
+                ui.add(egui::DragValue::new(&mut rot_y).speed(1.0));
+                ui.add(egui::DragValue::new(&mut rot_z).speed(1.0));
             });
-            
+
             ui.horizontal(|ui| {
                 ui.label("Scale:");
-                ui.add(egui::DragValue::f32(&mut 1.0).speed(0.1));
-                ui.add(egui::DragValue::f32(&mut 1.0).speed(0.1));
-                ui.add(egui::DragValue::f32(&mut 1.0).speed(0.1));
+                let mut scale_x = 1.0f32;
+                let mut scale_y = 1.0f32;
+                let mut scale_z = 1.0f32;
+                ui.add(egui::DragValue::new(&mut scale_x).speed(0.1));
+                ui.add(egui::DragValue::new(&mut scale_y).speed(0.1));
+                ui.add(egui::DragValue::new(&mut scale_z).speed(0.1));
             });
         });
         

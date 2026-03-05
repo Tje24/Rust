@@ -169,33 +169,33 @@ impl eframe::App for EditorApp {
         if self.renderer.is_none() {
             self.init_renderer();
         }
-        
+
         // Panel central
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.ui.draw_viewport(ui, self);
+            self.ui.draw_viewport(ui, &mut self.renderer, &mut self.scene_manager);
         });
-        
+
         // Panel izquierdo (archivos)
         egui::SidePanel::left("files_panel")
             .width_range(150.0..=300.0)
             .show(ctx, |ui| {
-                self.ui.draw_files_panel(ui, self);
+                self.ui.draw_files_panel(ui, &self.project_path);
             });
-        
+
         // Panel derecho (inspector)
         egui::SidePanel::right("inspector_panel")
             .width_range(200.0..=350.0)
             .show(ctx, |ui| {
-                self.ui.draw_inspector(ui, self);
+                self.ui.draw_inspector(ui, &self.mode, &self.viewport_mode);
             });
-        
+
         // Panel inferior (animación, tilemap, etc)
         egui::TopBottomPanel::bottom("bottom_panel")
             .height_range(100.0..=200.0)
             .show(ctx, |ui| {
-                self.ui.draw_bottom_panel(ui, self);
+                self.ui.draw_bottom_panel(ui, &self.mode);
             });
-        
+
         // Solicitar repaint continuo (para preview en tiempo real)
         if self.mode == EditorMode::Play {
             ctx.request_repaint();

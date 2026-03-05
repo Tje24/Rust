@@ -68,75 +68,39 @@ impl EditorUI {
         ui.label("No hay nodo seleccionado");
         
         ui.add_space(10.0);
-        
+
         ui.collapsing("Transform", |ui| {
             ui.horizontal(|ui| {
                 ui.label("Position:");
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(0.1));
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(0.1));
-                ui.add(egui::DragValue::f32(&mut 0.0).speed(0.1));
+                let mut pos_x = 0.0f32;
+                let mut pos_y = 0.0f32;
+                let mut pos_z = 0.0f32;
+                ui.add(egui::DragValue::new(&mut pos_x).speed(0.1));
+                ui.add(egui::DragValue::new(&mut pos_y).speed(0.1));
+                ui.add(egui::DragValue::new(&mut pos_z).speed(0.1));
             });
         });
     }
     
     /// Dibujar viewport
-    pub fn draw_viewport(&mut self, ui: &mut egui::Ui, app: &mut EditorApp) {
+    pub fn draw_viewport(&mut self, ui: &mut egui::Ui, _renderer: &mut Option<Box<dyn crate::render::RenderBackend>>, _scene_manager: &mut crate::core::SceneManager) {
         // Barra de herramientas superior
         ui.horizontal(|ui| {
-            // Botones de modo
-            let modes = [
-                ("2D", crate::core::ViewportMode::Mode2D),
-                ("3D", crate::core::ViewportMode::Mode3D),
-            ];
-            
-            for (label, mode) in modes.iter() {
-                let selected = app.viewport_mode == *mode;
-                let color = if selected {
-                    egui::Color32::from_rgb(100, 200, 255)
-                } else {
-                    egui::Color32::GRAY
-                };
-                
-                if ui.button(*label).clicked() {
-                    app.set_viewport_mode(*mode);
-                }
-            }
-            
-            ui.separator();
-            
-            // Botón Play/Stop
-            let play_label = match app.mode {
-                crate::core::EditorMode::Edit => "▶ Play",
-                crate::core::EditorMode::Play => "⏹ Stop",
-            };
-            
-            if ui.button(play_label).clicked() {
-                app.toggle_play_mode();
-            }
-            
-            ui.separator();
-            
-            // Indicador de render mode
-            let render_text = match app.render_mode {
-                crate::core::RenderMode::Bestia => "⚡ BESTIA",
-                crate::core::RenderMode::Dinamico => "📱 DINÁMICO",
-            };
-            
-            ui.label(render_text);
+            ui.label("Viewport - Próximamente: renderizado 3D");
         });
-        
+
         ui.separator();
-        
+
         // Área del viewport
         let viewport_rect = ui.available_rect_before_wrap();
-        
+
         // Fondo del viewport
         ui.painter().rect_filled(
             viewport_rect,
             0.0,
             egui::Color32::from_rgb(30, 30, 30),
         );
-        
+
         // Texto de placeholder
         ui.painter().text(
             viewport_rect.center(),
@@ -145,13 +109,29 @@ impl EditorUI {
             egui::FontId::proportional(16.0),
             egui::Color32::GRAY,
         );
-        
+
         // FPS counter
-        ui.label(format!("FPS: {:.0}", ui.ctx().fps()));
+        ui.label(format!("FPS: {:.0}", ui.ctx().input(|i| i.fps)));
     }
-    
+
+    /// Dibujar panel de archivos
+    pub fn draw_files_panel(&mut self, ui: &mut egui::Ui, _project_path: &Option<std::path::PathBuf>) {
+        ui.heading("📁 Archivos");
+        ui.separator();
+
+        ui.label("No hay proyecto abierto");
+    }
+
+    /// Dibujar inspector
+    pub fn draw_inspector(&mut self, ui: &mut egui::Ui, _mode: &crate::core::EditorMode, _viewport_mode: &crate::core::ViewportMode) {
+        ui.heading("🔍 Inspector");
+        ui.separator();
+
+        ui.label("Propiedades del objeto seleccionado");
+    }
+
     /// Dibujar panel inferior
-    pub fn draw_bottom_panel(&mut self, ui: &mut egui::Ui, _app: &mut EditorApp) {
+    pub fn draw_bottom_panel(&mut self, ui: &mut egui::Ui, _mode: &crate::core::EditorMode) {
         // Pestañas
         ui.horizontal(|ui| {
             ui.selectable_value(
