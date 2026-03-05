@@ -1,7 +1,5 @@
 // src/lib.rs - Punto de entrada principal para Android
 
-#![cfg_attr(target_os = "android", no_std)]
-
 pub mod core;
 pub mod render;
 pub mod ui;

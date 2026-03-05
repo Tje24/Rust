@@ -2,6 +2,7 @@
 
 use uuid::Uuid;
 use std::collections::HashMap;
+use std::boxed::Box;
 
 /// Entidad
 #[derive(Debug, Clone)]

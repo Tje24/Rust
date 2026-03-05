@@ -1,5 +1,7 @@
 // src/export/mod.rs - Módulo de exportación
 
+use std::string::String;
+
 mod exporter;
 
 pub use exporter::ProjectExporter;

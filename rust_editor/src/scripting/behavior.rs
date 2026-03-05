@@ -1,6 +1,7 @@
 // src/scripting/behavior.rs - Sistema de comportamientos
 
 use std::collections::HashMap;
+use std::boxed::Box;
 use super::{Node, PropertyValue};
 
 /// Trait para comportamientos

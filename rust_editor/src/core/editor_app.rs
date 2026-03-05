@@ -1,5 +1,7 @@
 // src/core/editor_app.rs - Aplicación principal del editor
 
+use std::boxed::Box;
+
 use super::{EditorMode, ViewportMode, RenderMode, SceneManager};
 use crate::render::RenderBackend;
 use crate::ui::EditorUI;

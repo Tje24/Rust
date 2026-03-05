@@ -1,5 +1,7 @@
 // src/ui/editor_ui.rs - UI principal del editor
 
+use std::string::String;
+
 use super::{PanelState, BottomTab};
 use crate::core::EditorApp;
 
