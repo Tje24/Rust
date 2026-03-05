@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::boxed::Box;
 
 /// Entidad
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Entity {
     pub id: Uuid,
     pub components: HashMap<String, Box<dyn std::any::Any + Send + Sync>>,

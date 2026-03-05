@@ -134,16 +134,16 @@ pub type BehaviorRegistry = HashMap<String, Box<dyn Fn() -> Box<dyn Behavior>>>;
 /// Obtener registro global de comportamientos
 pub fn get_behavior_registry() -> BehaviorRegistry {
     let mut registry = HashMap::new();
-    
+
     registry.insert(
         "oscillate".to_string(),
-        Box::new(|| Box::new(OscillateBehavior::default())) as Box<dyn Fn() -> Box<dyn Behavior>>
+        Box::new(|| Box::new(OscillateBehavior::default()) as Box<dyn Behavior>)
     );
-    
+
     registry.insert(
         "patrol".to_string(),
-        Box::new(|| Box::new(PatrolBehavior::default())) as Box<dyn Fn() -> Box<dyn Behavior>>
+        Box::new(|| Box::new(PatrolBehavior::default()) as Box<dyn Behavior>)
     );
-    
+
     registry
 }

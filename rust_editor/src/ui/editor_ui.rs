@@ -110,24 +110,9 @@ impl EditorUI {
             egui::Color32::GRAY,
         );
 
-        // FPS counter
-        ui.label(format!("FPS: {:.0}", ui.ctx().input(|i| i.fps)));
-    }
-
-    /// Dibujar panel de archivos
-    pub fn draw_files_panel(&mut self, ui: &mut egui::Ui, _project_path: &Option<std::path::PathBuf>) {
-        ui.heading("📁 Archivos");
-        ui.separator();
-
-        ui.label("No hay proyecto abierto");
-    }
-
-    /// Dibujar inspector
-    pub fn draw_inspector(&mut self, ui: &mut egui::Ui, _mode: &crate::core::EditorMode, _viewport_mode: &crate::core::ViewportMode) {
-        ui.heading("🔍 Inspector");
-        ui.separator();
-
-        ui.label("Propiedades del objeto seleccionado");
+        // FPS counter - use input state's fps field
+        let fps = ui.ctx().input(|i| i.stats().fps());
+        ui.label(format!("FPS: {:.0}", fps));
     }
 
     /// Dibujar panel inferior

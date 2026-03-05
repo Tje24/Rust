@@ -18,6 +18,23 @@ pub enum Component {
     AudioSource(AudioSourceComponent),
 }
 
+impl Component {
+    /// Try to get a reference to a specific component type
+    pub fn as_ref<T: AsComponent>(&self) -> Option<&T> {
+        T::as_ref(self)
+    }
+
+    /// Try to get a mutable reference to a specific component type
+    pub fn as_mut<T: AsComponent>(&mut self) -> Option<&mut T> {
+        T::as_mut(self)
+    }
+
+    /// Check if this component is of a specific type
+    pub fn is<T: AsComponent>(&self) -> bool {
+        self.as_ref::<T>().is_some()
+    }
+}
+
 /// Componente de transformación
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TransformComponent {

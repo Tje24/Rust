@@ -11,15 +11,12 @@ pub mod tilemap;
 pub mod physics;
 pub mod export;
 
-#[cfg(target_os = "android")]
-use android_logger::Config;
-
 /// Inicialización específica para Android
 #[cfg(target_os = "android")]
 fn init_android_logging() {
     android_logger::init_once(
-        Config::default()
-            .filter(log::LevelFilter::Debug)
+        android_logger::Config::default()
+            .with_max_level(log::LevelFilter::Debug)
             .with_tag("rust_editor")
     );
     log::info!("🦀 Rust Editor iniciado en Android");
@@ -44,13 +41,19 @@ pub extern "C" fn android_main(app: android_activity::AndroidApp) {
     let mut editor = core::EditorApp::new();
     editor.init_renderer();
 
+    // Flag para controlar el bucle principal
+    let mut running = true;
+
     // Bucle principal (simplificado por ahora)
     // En implementación real, esto integrará con egui + render backend
-    loop {
-        // Verificar si la actividad debe cerrarse
-        if app.poll_events().is_some() {
-            break;
-        }
+    while running {
+        // Verificar si la actividad debe cerrarse usando poll_events con callback
+        use std::time::Duration;
+        app.poll_events(Some(Duration::from_millis(10)), |event| {
+            if let android_activity::MainEvent::Terminate = event {
+                running = false;
+            }
+        });
 
         // Actualizar lógica
         editor.update(0.016);

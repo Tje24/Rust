@@ -63,17 +63,17 @@ impl Node {
     
     /// Obtener un componente
     pub fn get_component<T: AsComponent>(&self) -> Option<&T> {
-        self.components.iter().find_map(Component::as_ref)
+        self.components.iter().find_map(|c| c.as_ref::<T>())
     }
-    
+
     /// Obtener un componente (mutable)
     pub fn get_component_mut<T: AsComponent>(&mut self) -> Option<&mut T> {
-        self.components.iter_mut().find_map(Component::as_mut)
+        self.components.iter_mut().find_map(|c| c.as_mut::<T>())
     }
-    
+
     /// Verificar si tiene un componente
     pub fn has_component<T: AsComponent>(&self) -> bool {
-        self.components.iter().any(Component::is::<T>)
+        self.components.iter().any(|c| c.is::<T>())
     }
     
     /// Verificar si tiene un tag

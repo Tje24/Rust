@@ -42,7 +42,7 @@ impl Animation {
     }
     
     /// Evaluar animación en un tiempo dado
-    pub fn evaluate(&self, time: f32) -> Vec<(Uuid, KeyframeValue)> {
+    pub fn evaluate(&self, _time: f32) -> Vec<(Uuid, KeyframeValue)> {
         // TODO: Implementar evaluación de tracks
         Vec::new()
     }
