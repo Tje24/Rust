@@ -9,9 +9,10 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
   RUST_VERSION: "nightly"
-  ANDROID_SDK_VERSION: "33"
-  NDK_VERSION: "25.2.9519653"
+  ANDROID_SDK_VERSION: "34"
+  NDK_VERSION: "26.1.10909125"
   BUILD_TOOLS_VERSION: "34.0.0"
 
 jobs:
@@ -54,12 +55,12 @@ jobs:
           echo "PATH=$NDK_BIN:$PATH" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$NDK_BIN/../lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
           echo "CMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}/build/cmake/android.toolchain.cmake" >> $GITHUB_ENV
-          
+
       - name: Configure Cargo for Android
         run: |
           export NDK_BIN=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin
-          mkdir -p rust_editor/.cargo
-          cat > rust_editor/.cargo/config.toml << EOF
+          mkdir -p .cargo
+          cat > .cargo/config.toml << EOF
           [target.aarch64-linux-android]
           linker = "$NDK_BIN/aarch64-linux-android24-clang"
           ar = "$NDK_BIN/llvm-ar"
@@ -74,12 +75,12 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
           echo "NDK_HOME=$NDK_HOME"
           echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
-          cat rust_editor/.cargo/config.toml
+          cat .cargo/config.toml
           rustc --version
           cargo --version
           ls -la $ANDROID_HOME/build-tools/
           pwd
-          ls -la rust_editor/
+          ls -la .
 
       - name: Build ARM64
         run: cargo build --release --target aarch64-linux-android --lib

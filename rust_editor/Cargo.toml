@@ -24,9 +24,9 @@ wgpu_backend = ["dep:wgpu", "dep:egui-wgpu"]
 # ============================================
 # UI - egui (inmediato, ligero, multiplataforma)
 # ============================================
-egui = "0.26"
-eframe = { version = "0.26", default-features = false, features = ["default_fonts", "glow"] }
-egui_extras = { version = "0.26", features = ["all_loaders"] }
+egui = "0.29"
+eframe = { version = "0.29", default-features = false, features = ["default_fonts", "glow"] }
+egui_extras = { version = "0.29", features = ["all_loaders"] }
 
 # ============================================
 # Renderizado - Doble backend
@@ -35,13 +35,13 @@ egui_extras = { version = "0.26", features = ["all_loaders"] }
 raylib = { version = "5.0", optional = true }
 
 # Modo Bestia (wgpu) - Para dispositivos gama alta
-wgpu = { version = "0.19", optional = true, features = ["webgpu"] }
-egui-wgpu = { version = "0.26", optional = true }
+wgpu = { version = "0.20", optional = true, features = ["webgpu"] }
+egui-wgpu = { version = "0.29", optional = true }
 
 # ============================================
 # Matemáticas
 # ============================================
-glam = "0.25"
+glam = "0.28"
 
 # ============================================
 # Serialización - TOML/JSON para scripting
@@ -55,8 +55,8 @@ ron = "0.8"
 # Logging y debugging
 # ============================================
 log = "0.4"
-env_logger = "0.10"
-android_logger = "0.13"
+env_logger = "0.11"
+android_logger = "0.14"
 
 # ============================================
 # Manejo de errores
@@ -67,19 +67,19 @@ thiserror = "1.0"
 # ============================================
 # Utilidades
 # ============================================
-uuid = { version = "1.6", features = ["v4", "serde"] }
+uuid = { version = "1.10", features = ["v4", "serde"] }
 once_cell = "1.19"
 parking_lot = "0.12"
-image = "0.24"
+image = "0.25"
 
 # ============================================
 # Android específico
 # ============================================
 [target.'cfg(target_os = "android")'.dependencies]
-ndk = "0.7"
+ndk = "0.9"
 ndk-context = "0.1"
 ndk-glue = "0.7"
-android-activity = { version = "0.5", features = ["native-activity"] }
+android-activity = { version = "0.6", features = ["native-activity"] }
 
 # ============================================
 # Desktop específico (para desarrollo)
