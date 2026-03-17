@@ -74,21 +74,21 @@ jobs:
 
       - name: Build for Android ARM64 (Primary)
         run: |
-          cargo build --lib --target aarch64-linux-android --release
+          cargo build --lib --target aarch64-linux-android --release --features wgpu_backend
         continue-on-error: false
 
       - name: Build for Android ARMv7 (Secondary)
         run: |
-          cargo build --lib --target armv7-linux-androideabi --release
+          cargo build --lib --target armv7-linux-androideabi --release --features wgpu_backend
         continue-on-error: true
 
       - name: Build for Android x86_64 (Emulator)
         run: |
-          cargo build --lib --target x86_64-linux-android --release
+          cargo build --lib --target x86_64-linux-android --release --features wgpu_backend
         continue-on-error: true
 
       - name: Build desktop binary (verification)
-        run: cargo build --bin editor_desktop --release
+        run: cargo build --bin editor_desktop --release --features wgpu_backend
 
       - name: Upload ARM64 library
         uses: actions/upload-artifact@v4

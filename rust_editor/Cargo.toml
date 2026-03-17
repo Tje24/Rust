@@ -16,8 +16,7 @@ name = "editor_desktop"
 path = "src/bin/editor_desktop.rs"
 
 [features]
-default = ["wgpu_backend"]
-wgpu_backend = ["dep:wgpu", "dep:egui-wgpu"]
+default = []
 
 [dependencies]
 # ============================================
@@ -30,8 +29,8 @@ egui_extras = { version = "0.29", features = ["all_loaders"] }
 # ============================================
 # Renderizado - wgpu (Vulkan/Metal/DirectX)
 # ============================================
-wgpu = { version = "0.20", features = ["webgpu"] }
-egui-wgpu = { version = "0.29" }
+wgpu = { version = "0.20", optional = true, features = ["webgpu"] }
+egui-wgpu = { version = "0.29", optional = true }
 
 # ============================================
 # Matemáticas
