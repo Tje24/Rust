@@ -1,0 +1,136 @@
+name: Build Android APK
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+  RUST_VERSION: "nightly"
+  ANDROID_SDK_VERSION: "34"
+  NDK_VERSION: "26.1.10909125"
+  BUILD_TOOLS_VERSION: "34.0.0"
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust_editor
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            clang \
+            libclang-dev \
+            pkg-config \
+            libx11-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libasound2-dev
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust_editor
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: ${{ env.ANDROID_SDK_VERSION }}
+          build-tools-version: ${{ env.BUILD_TOOLS_VERSION }}
+
+      - name: Install NDK
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;${{ env.NDK_VERSION }}"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
+          echo "NDK_HOME=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
+
+      - name: Setup NDK Toolchain
+        run: |
+          export NDK_BIN=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin
+          echo "PATH=$NDK_BIN:$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$NDK_BIN/../lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}/build/cmake/android.toolchain.cmake" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}" >> $GITHUB_ENV
+
+      - name: Configure Cargo for Android
+        run: |
+          export NDK_BIN=$ANDROID_HOME/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin
+          mkdir -p .cargo
+          cat > .cargo/config.toml << EOF
+          [target.aarch64-linux-android]
+          linker = "$NDK_BIN/aarch64-linux-android24-clang"
+          ar = "$NDK_BIN/llvm-ar"
+
+          [target.armv7-linux-androideabi]
+          linker = "$NDK_BIN/armv7a-linux-androideabi24-clang"
+          ar = "$NDK_BIN/llvm-ar"
+          EOF
+          echo "CFLAGS=-DANDROID -D__ANDROID_API__=24" >> $GITHUB_ENV
+          echo "CXXFLAGS=-DANDROID -D__ANDROID_API__=24" >> $GITHUB_ENV
+
+      - name: Verify Setup
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME"
+          echo "NDK_HOME=$NDK_HOME"
+          echo "CMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+          cat .cargo/config.toml
+          rustc --version
+          cargo --version
+          ls -la $ANDROID_HOME/build-tools/
+          pwd
+          ls -la .
+
+      - name: Build ARM64
+        run: cargo build --release --target aarch64-linux-android --lib --features wgpu_backend
+
+      - name: Build ARMv7
+        run: cargo build --release --target armv7-linux-androideabi --lib --features wgpu_backend
+
+      - name: Create APK Structure
+        run: |
+          mkdir -p apk-build/lib/arm64-v8a apk-build/lib/armeabi-v7a apk-build/assets
+          cp target/aarch64-linux-android/release/librust_editor.so apk-build/lib/arm64-v8a/
+          cp target/armv7-linux-androideabi/release/librust_editor.so apk-build/lib/armeabi-v7a/
+          cp android/AndroidManifest.xml apk-build/
+          cp -r android/res apk-build/ 2>/dev/null || true
+          ls -la apk-build/
+
+      - name: Package APK
+        run: |
+          cd apk-build && zip -r ../rust-editor-unsigned.apk *
+          $ANDROID_HOME/build-tools/${{ env.BUILD_TOOLS_VERSION }}/zipalign -f -p 4 rust-editor-unsigned.apk rust-editor-aligned.apk
+
+      - name: Sign APK
+        run: |
+          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          $ANDROID_HOME/build-tools/${{ env.BUILD_TOOLS_VERSION }}/apksigner sign --ks debug.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out rust-editor-signed.apk rust-editor-aligned.apk
+          $ANDROID_HOME/build-tools/${{ env.BUILD_TOOLS_VERSION }}/apksigner verify rust-editor-signed.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-editor-debug.apk
+          path: rust-editor-signed.apk
+          retention-days: 30
