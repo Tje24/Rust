@@ -67,7 +67,7 @@ impl Default for EditorState {
         EditorState {
             editor_mode: EditorMode::Edit,
             viewport_mode: ViewportMode::Mode3D,
-            render_mode: RenderMode::Dinamico,
+            render_mode: RenderMode::Wgpu,
             selected_node: None,
             selected_nodes: Vec::new(),
             hovered_node: None,

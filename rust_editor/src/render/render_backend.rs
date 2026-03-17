@@ -9,8 +9,6 @@ use glam::Vec3;
 pub enum BackendType {
     /// wgpu (Vulkan/Metal/DirectX)
     Wgpu,
-    /// raylib (OpenGL ES)
-    Raylib,
 }
 
 /// Error de renderizado

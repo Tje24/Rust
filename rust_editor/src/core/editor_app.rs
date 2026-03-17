@@ -41,7 +41,7 @@ impl EditorApp {
         EditorApp {
             mode: EditorMode::Edit,
             viewport_mode: ViewportMode::Mode3D,
-            render_mode: RenderMode::Dinamico,
+            render_mode: RenderMode::Wgpu,
             scene_manager: SceneManager::new(),
             ui: EditorUI::new(),
             renderer: None,
@@ -54,20 +54,9 @@ impl EditorApp {
     pub fn init_renderer(&mut self) {
         log::info!("Inicializando renderer...");
 
-        // Usar el backend según el feature activo
-        #[cfg(not(feature = "wgpu_backend"))]
-        {
-            use crate::render::RaylibBackend;
-            self.renderer = Some(Box::new(RaylibBackend::new()));
-            log::info!("Backend: Raylib (Dinámico)");
-        }
-
-        #[cfg(feature = "wgpu_backend")]
-        {
-            use crate::render::WgpuBackend;
-            self.renderer = Some(Box::new(WgpuBackend::new()));
-            log::info!("Backend: Wgpu (Bestia)");
-        }
+        use crate::render::WgpuBackend;
+        self.renderer = Some(Box::new(WgpuBackend::new()));
+        log::info!("Backend: Wgpu");
 
         log::info!("Renderer inicializado: {:?}", self.render_mode);
     }

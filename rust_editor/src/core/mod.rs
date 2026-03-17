@@ -31,10 +31,8 @@ pub enum ViewportMode {
 /// Modos de renderizado
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RenderMode {
-    /// wgpu (máximo rendimiento)
-    Bestia,
-    /// raylib (máxima compatibilidad)
-    Dinamico,
+    /// wgpu (Vulkan/Metal/DirectX)
+    Wgpu,
 }
 
 impl Default for EditorMode {
@@ -51,6 +49,6 @@ impl Default for ViewportMode {
 
 impl Default for RenderMode {
     fn default() -> Self {
-        RenderMode::Dinamico // Empezar con el más compatible
+        RenderMode::Wgpu
     }
 }

@@ -1,17 +1,9 @@
 // src/render/mod.rs - Módulo de renderizado
 
 mod render_backend;
-#[cfg(not(feature = "wgpu_backend"))]
-mod raylib_backend;
-#[cfg(feature = "wgpu_backend")]
 mod wgpu_backend;
 
 pub use render_backend::*;
-
-#[cfg(not(feature = "wgpu_backend"))]
-pub use raylib_backend::RaylibBackend;
-
-#[cfg(feature = "wgpu_backend")]
 pub use wgpu_backend::WgpuBackend;
 
 /// Métricas de rendimiento

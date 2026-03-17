@@ -146,20 +146,14 @@ impl MetricsPanel {
     
     pub fn draw(&mut self, ui: &mut egui::Ui, renderer: &dyn crate::render::RenderBackend) {
         let metrics = renderer.get_metrics();
-        
-        // Header con modo
+
+        // Header por tipo de backend
         ui.horizontal(|ui| {
             match renderer.get_backend_type() {
                 crate::render::BackendType::Wgpu => {
                     ui.colored_label(
                         egui::Color32::from_rgb(255, 200, 0),
-                        "⚡ MODO BESTIA"
-                    );
-                }
-                crate::render::BackendType::Raylib => {
-                    ui.colored_label(
-                        egui::Color32::from_rgb(100, 200, 255),
-                        "📱 MODO DINÁMICO"
+                        "⚡ WGPU Backend"
                     );
                 }
             }
